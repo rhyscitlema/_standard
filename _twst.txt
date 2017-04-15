@@ -1,0 +1,195 @@
+0 This file contains texts, with space allowed, that are loaded and used.
+0
+0 They are structured as:
+0
+0    <Identity Number>    <Ignored - can use for small comments>
+0<target text> <Ending sequence of non-space characters> <Ignored until next ID>
+0
+0
+0 They are loaded as follows:
+0
+0 1) Any content is ignored until a space-enclosed number is detected.
+0
+0 2) If the detected number is 0 then the line that follows is ignored.
+0
+0 3) If the detected number is 1 then the first sequence
+0    of non-space characters which follows is loaded.
+0    Then we go to step 1 and detect the next number.
+0
+0 4) Any content until the first encounter of a newline is ignored.
+0
+0 5) If the detected number is a valid Identity Number
+0    as specified by the software provider, then
+0    extraction starts from just after the newline.
+0    If not then we go to step 1 and detect the next number.
+0
+0 5) Extraction stops when the End_Of_Text sequence of non-space
+0    characters, as specified by Indenty Number 1, is detected.
+0    Then we go to step 1 and detect the next number.
+0
+0 Note: The place-holders are specified using: \<number>.
+0       For example \1 means: give special meaning to the number 1.
+0       This special meaning is: the place-holder for the first argument.
+0       Here the 1st, 2nd and 3rd arguments are the file, line and column.
+0
+0 Note: If an Identity Number is not found then the default setting,
+0       as built in the software, is used. This setting is actually
+0       the original version of this file as given by the software.
+
+
+0 1 [[]] End_Of_Text , do not change
+
+
+ 10  Component_Already_Defined
+Error in \1 at \2:\3 on '\4':
+Component is already defined.[[]]
+
+ 11  Parameter_Vst_Is_Invalid
+Error in \1 at \2:\3 on '\4':
+Parameter structure must be '\5' not '\6'.[[]]
+
+ 12  Result_Vst_Is_Invalid
+Error in \1 at \2:\3 on '\4':
+Result structure must be '\5' not '\6'.[[]]
+
+
+ 21  IsNot_ValueStructure
+Error in \1 at \2:\3:
+On '\4': must be a bracket, comma or name.[[]]
+
+ 22  Invalid_Expression_End
+Error in \1 at \2:\3:
+Invalid end of expression.[[]]
+
+ 23  Invalid_Expression_Syntax
+Error in \1 at \2:\3:
+Invalid syntax due to '\4'.[[]]
+
+
+ 30  Bracket_Match_Invalid
+Error in \1 at \2:\3:
+On '\4': expect '\5' instead.[[]]
+
+ 31  Bracket_Match_None
+Error in \1 at \2:\3:
+Found '\4' without matching '\5'.[[]]
+
+ 32  Lacking_Bracket
+Error in \1 at \2:\3:
+Expect \5 closed bracket at end of expression.[[]]
+
+ 33  Lacking_Brackets
+Error in \1 at \2:\3:
+Expect \5 closed brackets at end of expression.[[]]
+
+
+ 40  IsNot_Number
+Error in \1 at \2:\3:
+On '\4': not a valid number.[[]]
+
+ 41  IsNot_Component
+Error in \1 at \2:\3:
+Cannot find variable with name '\4' .[[]]
+
+ 42  Deadlock_Found
+Error in \1 at \2:\3:
+Deadlock on variable '\4'.[[]]
+
+
+ 50  Invalid_Operand
+Error in \1 at \2:\3 on '\4':
+Cannot evaluate on operand from operation '\5'.[[]]
+
+ 51  Operands_DoNot_Match
+Error in \1 at \2:\3 on '\4':
+Left and right operands do not match.
+Left span is \5, right span is \6.[[]]
+
+ 52  Operand_IsNot_Matrix
+Error in \1 at \2:\3:
+On '\4': operand is '\5', not a vector nor a matrix.[[]]
+
+ 53  Argument_vs_Parameter
+Error in \1 at \2:\3 on '\4':
+Function argument is '\5' but parameter is
+'\6', the value structures do not match.[[]]
+
+
+ 54  Indexing_Single_Number
+Error in \1 at \2:\3 on '\4':
+Cannot index a single value.[[]]
+
+ 55  Index_OutOf_Range
+Error in \1 at \2:\3 on '\4':
+Indexing number = \5 is not in range [0,\6].[[]]
+
+ 56  Vector_Starting_Value
+Error in \1 at \2:\3 on '\4':
+Starting value must be a single number.[[]]
+
+ 57  Vector_Stopping_Value
+Error in \1 at \2:\3 on '\4':
+Stopping value must be a single number.[[]]
+
+ 58  Vector_Middle_Value
+Error in \1 at \2:\3 on '\4':
+The sum of the middle argument must be non-zero.[[]]
+
+ 59  Vector_Length_Invalid
+Error in \1 at \2:\3 on '\4':
+Length of vector must be valid and greater than 0.[[]]
+
+
+ 70  Left_IsNot_Matrix
+Error in \1 at \2:\3:
+On '\4': left operand is '\5', not a vector nor a matrix.
+If operation on corresponding elements then use '\6' instead.[[]]
+
+ 71  Right_IsNot_Matrix
+Error in \1 at \2:\3:
+On '\4': right operand is '\5', not a vector nor a matrix.
+If operation on corresponding elements then use '\6' instead.[[]]
+
+ 72  MatrixMult_IsInvalid
+Error in \1 at \2:\3 on '\4':
+Matrix multiplication (\5 by \6)(\7 by \8) is invalid.[[]]
+
+ 73  Matrix_IsNot_NbyN
+Error in \1 at \2:\3:
+On '\4': operand is a (\5 by \6) matrix.
+It must be an (n by n) matrix.[[]]
+
+ 74  Left_IsNot_Single
+Error in \1 at \2:\3 on '\4':
+Left operand must have span = 1 not \5.[[]]
+
+ 75  Right_IsNot_Single
+Error in \1 at \2:\3 on '\4':
+Right operand must have span = 1 not \5.[[]]
+
+
+ 80  Expect_Question_Before
+Error in \1 at \2:\3:
+On '\4', expect '?' before it.[[]]
+
+ 81  Expect_Choice_After
+Error in \1 at \2:\3:
+On '\4', expect ':' after it.[[]]
+
+ 82 Condition_IsNot_Single
+Error in \1 at \2:\3 on \4:
+Condition must have span = 1 not \5.[[]]
+
+
+ 90  Division_By_Zero
+division by zero.[[]]
+
+ 91  Not_On_Complex_Number
+operand value type is not supported.[[]]
+
+ 92  Only_On_Integer_Number
+operand must only be an integer.[[]]
+
+ 93  Argument_OutOf_Domain
+argument is out of function domain.[[]]
+
