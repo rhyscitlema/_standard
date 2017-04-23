@@ -49,6 +49,10 @@ mchar ClosedToOpenedBracket (mchar c)
 
 
 /******************************************************************************************/
+// chr => character
+// pcn => partly code number
+// pifcn => partly is fully code number
+// 6 = sizeof("\uXXXX")
 
 static mchar* buffer = NULL;
 
@@ -89,10 +93,11 @@ static mchar* mchar_to_mstr (mchar* str, mchar c)
 
 const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input)
 {
-    mchar* output;
-    if(input==NULL) return NULL;
-    buffer = mchar_alloc (buffer, strlen2(input));
-    output = buffer;
+    long size = strlen2(input);
+    if(size==0) return NULL;
+
+    buffer = mchar_alloc (buffer, size);
+    mchar* output = buffer;
 
     for( ; *input!=0; input++)
     {
@@ -105,9 +110,12 @@ const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input)
             case 't' : *output++ = '\t'; break;
             case 'r' : *output++ = '\r'; break;
             case 'n' : *output++ = '\n'; break;
-            case 'u' :
-                if(mstr_to_mchar(output, input+1) && (*output != 0))
-                { output++; input += 4; break; }
+            case 'u' : // if \uXXXX found
+                if(mstr_to_mchar(output, input+1) && (*output!=0))
+                {   output++;
+                    input += 4; // skip the \uXXXX
+                    break;
+                }
             default: { *output++= '\\'; *output++ = *input; }
             }
         }
@@ -120,11 +128,12 @@ const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input)
 
 const mchar* chr_to_pcn_22 (mchar** output_ptr, const mchar* input)
 {
-    mchar* output;
-    if(input==NULL) return NULL;
-    buffer = mchar_alloc (buffer, strlen2(input)*6);
-    output = buffer;
+    long size = strlen2(input);
+    if(size==0) return NULL;
     initial_set_pif_cn();
+
+    buffer = mchar_alloc (buffer, size*6);
+    mchar* output = buffer;
 
     for( ; *input!=0; input++)
     {

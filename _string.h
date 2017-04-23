@@ -87,6 +87,6 @@ void set_message (mchar* output, const mchar* format, const lchar* lstr, ...);
 extern const value* mfet_parse_and_evaluate (
     const mchar* mfet_string,   /* string to be parsed and evaluated */
     const mchar* source_name,   /* source of mfet_string, if NULL then "input" is used */
-    const value* result_str);   /* the 'expected' result structure, NULL for any */
+    const value* result_vst);   /* the 'expected' result value structure, NULL for any */
 
 #endif

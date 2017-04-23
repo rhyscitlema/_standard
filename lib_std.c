@@ -1,7 +1,0 @@
-#include "_texts.c"
-#include "_string.c"
-#include "_strfun.c"
-#include "_math.c"
-#include "_value.c"
-#include "_stdio.c"
-#include "_malloc.c"

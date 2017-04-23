@@ -58,8 +58,8 @@ inline SmaFlt cabs (SmaCom x)
 #define creal
 #define cimag
 #define conj
-#define cproj
 */
+#define cproj
 
 #endif
 

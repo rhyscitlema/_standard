@@ -40,7 +40,8 @@ bool file_to_array (const  char* filename,  char** filecontent_ptr, size_t *cont
         filecontent = (char*) _realloc (*filecontent_ptr, size+1);
         *filecontent_ptr = filecontent;
 
-        fread (filecontent, 1, size, file);
+        if(fread (filecontent, 1, size, file) != size)
+        { fclose(file); return false; }
         filecontent[size]=0;
     }
     fclose(file);

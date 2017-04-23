@@ -80,8 +80,8 @@ const char* vst_to_str (const value* vst)
         case aPoiter: str += sprintf(str, "ptr(%d,%p)", j, getPoiter(v)); break;
         case aSeptor: str += sprintf(str, "sep(%d,%ld,%ld)", j, getSeptor(v).len, getSeptor(v).cols); break;
         case aString: strcpy13(tstr, getString(v)); str += sprintf(str, "t(%d,%s)", j, tstr); break;
-        case aSmaInt: str += sprintf(str, "si(%d,%lld)", j, getSmaInt(v)); break;
-        case aSmaRat: str += sprintf(str, "sr(%d,%lld/%lld)", j, getSmaRat(v).nume, getSmaRat(v).deno); break;
+        case aSmaInt: str += sprintf(str, "si(%d,%ld)", j, (long)getSmaInt(v)); break;
+        case aSmaRat: str += sprintf(str, "sr(%d,%ld/%ld)", j, (long)getSmaRat(v).nume, (long)getSmaRat(v).deno); break;
         case aSmaFlt: str += sprintf(str, "sf(%d,%lf)", j, getSmaFlt(v)); break;
         case aSmaCom: str += sprintf(str, "sc(%d,~)", j); break;
         default:      str += sprintf(str, "Type=%d", j); break;
