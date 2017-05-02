@@ -946,7 +946,7 @@ value toFlt (value n)
 
 /*----------------- get array from value structure ----------------------*/
 
-bool floatFromVst(SmaFlt* output, const value* input, int count, mchar* errormessage, const char* name)
+bool floatFromVst(SmaFlt* output, const value* input, int count, wchar* errormessage, const char* name)
 {
     bool fail=false;
     int i;
@@ -959,7 +959,7 @@ bool floatFromVst(SmaFlt* output, const value* input, int count, mchar* errormes
         i++; output++;
     }
     if(fail)
-    {   char* str = (char*)(errormessage+1000);
+    {   char* str = (char*)ErrStr0;
         if(!name) name = "result";
         if(count==1) sprintf1(str, "Error: %s must be a real number.", name);
         else         sprintf1(str, "Error: %s must be %d real numbers.", name, count);
@@ -968,7 +968,7 @@ bool floatFromVst(SmaFlt* output, const value* input, int count, mchar* errormes
     return i==count;
 }
 
-bool integerFromVst (int* output, const value* input, int count, mchar* errormessage, const char* name)
+bool integerFromVst (int* output, const value* input, int count, wchar* errormessage, const char* name)
 {
     bool fail=false;
     int i;
@@ -981,7 +981,7 @@ bool integerFromVst (int* output, const value* input, int count, mchar* errormes
         i++; output++;
     }
     if(fail)
-    {   char* str = (char*)(errormessage+1000);
+    {   char* str = (char*)ErrStr0;
         if(!name) name = "result";
         if(count==1) sprintf1(str, "Error: %s must be an integer.", name);
         else         sprintf1(str, "Error: %s must be %d integers.", name, count); // TODO: test this part of the code
@@ -1002,17 +1002,16 @@ bool integerFromVst (int* output, const value* input, int count, mchar* errormes
         if(nume<prev) { dp=4; break; } else prev=nume; \
     }
 
-value StrToVal (const mchar* str) // single output value
+value StrToVal (const wchar* str) // single output value
 {
     initY
     int i=0, dp=0, neg=0, length;
     SmaInt prev=0, nume=0, deno=1;
-    mchar c, dpt;
-
-    dpt = *TWSF(DecimalPoint);
+    wchar c=0;
+    wchar dpt = *TWSF(DecimalPoint);
 
     length = strlen2(str);
-    if(length<=0) return setNotval(CST21("String to number conversion: given string is empty."));
+    if(length<=0) return setNotval(L"String to number conversion: given string is empty.");
 
     if(str[i] == *TWSF(Negative)) { neg=1; i++; }
 
@@ -1040,11 +1039,13 @@ value StrToVal (const mchar* str) // single output value
     {
         for(    ; i < length; i++) { c = str[i]; if(c == dpt) { dp++; if(dp==2) break; } StrToValGet(10, '0', '9', 0) else { dp=3; break; } }
     }
-    else return setNotval(CST21("Number must not begin with a decimal point."));
-    if(dp==1 && c==dpt) return setNotval(CST21("Number must not end with a decimal point."));
-    if(dp==2) return setNotval(CST21("Number has more than one decimal point."));
-    if(dp==3) return setNotval(CST21("Number has an invalid digit."));
-    if(dp==4) return setNotval(CST21("Number has too many digits; BigNum is not yet supported."));
+
+    else return setNotval(L"Number must not begin with a decimal point.");
+    if(c==dpt
+    && dp==1) return setNotval(L"Number must not end with a decimal point.");
+    if(dp==2) return setNotval(L"Number has more than one decimal point.");
+    if(dp==3) return setNotval(L"Number contains an invalid digit.");
+    if(dp==4) return setNotval(L"Number has too many digits; BigNum is not yet supported.");
 
     if(neg) nume = -nume;
     if(deno==1) y = setSmaInt(nume);
@@ -1057,7 +1058,7 @@ value StrToVal (const mchar* str) // single output value
 
 
 
-static mchar* IntToStrGet (mchar* str, SmaInt n, char base)
+static wchar* IntToStrGet (wchar* str, SmaInt n, char base)
 {
     int len=0, off=0;
 
@@ -1075,20 +1076,20 @@ static mchar* IntToStrGet (mchar* str, SmaInt n, char base)
         off+=2; str[len++]='0'; str[len++]='x';
         while(1)
         {
-            str[len++] = (mchar)(((n%16)<10) ? ((n%16)+'0') : ((n%16)-10+'A'));
+            str[len++] = (wchar)(((n%16)<10) ? ((n%16)+'0') : ((n%16)-10+'A'));
             n /= 16; if(n==0) break;
         }
         break;
     case 2:
         off+=2; str[len++]='0'; str[len++]='b';
-        while(1) { str[len++] = (mchar)(n%2) + '0'; n /= 2; if(n==0) break; }
+        while(1) { str[len++] = (wchar)(n%2) + '0'; n /= 2; if(n==0) break; }
         break;
     case 8:
         off+=2; str[len++]='0'; str[len++]='o';
-        while(1) { str[len++] = (mchar)(n%8) + '0'; n /= 8; if(n==0) break; }
+        while(1) { str[len++] = (wchar)(n%8) + '0'; n /= 8; if(n==0) break; }
         break;
     default:
-        while(1) { str[len++] = (mchar)(n%10) + '0'; n /= 10; if(n==0) break; }
+        while(1) { str[len++] = (wchar)(n%10) + '0'; n /= 10; if(n==0) break; }
         break;
     }
     str[len]=0;
@@ -1098,7 +1099,7 @@ static mchar* IntToStrGet (mchar* str, SmaInt n, char base)
 
 
 
-static mchar* FltToStrGet (mchar* output, SmaFlt n, char base)
+static wchar* FltToStrGet (wchar* output, SmaFlt n, char base)
 {
     int i;
     SmaInt w, d;
@@ -1136,11 +1137,11 @@ static mchar* FltToStrGet (mchar* output, SmaFlt n, char base)
 
 
 
-static mchar* ValToStr (value n, mchar* output, char base, char wplaces, short dplaces)
+static wchar* ValToStr (value n, wchar* output, char base, char wplaces, short dplaces)
 {
     int i;
     SmaFlt sf;
-    mchar temp[100];
+    wchar temp[100];
     if(output==NULL) return NULL;
     if(base!=2 && base!=8 && base!=16) base=10;
     i = base==10 ? 0 : 2;
@@ -1199,7 +1200,7 @@ static mchar* ValToStr (value n, mchar* output, char base, char wplaces, short d
 
 
 
-static mchar* VstToStrGet (const value** vst_ptr, mchar* result, int info,
+static wchar* VstToStrGet (const value** vst_ptr, wchar* result, int info,
                            char base, char wplaces, short dplaces)
 {
     const value* vst = *vst_ptr;
@@ -1250,9 +1251,9 @@ static mchar* VstToStrGet (const value** vst_ptr, mchar* result, int info,
             }
             else // else c==3
             {   *result++ = *TWSF(DoubleQuote);
-                for( ; lstr->mchr!=0; lstr = lstr->next)
+                for( ; lstr->wchr!=0; lstr = lstr->next)
                 {
-                    mchar mc = lstr->mchr;
+                    wchar mc = lstr->wchr;
                          if(mc=='\\') { *result++ = '\\'; *result++ = '\\'; }
                     else if(mc== '"') { *result++ = '\\'; *result++ =  '"'; }
                     else *result++ = mc;
@@ -1287,7 +1288,7 @@ static mchar* VstToStrGet (const value** vst_ptr, mchar* result, int info,
     return result;
 }
 
-mchar* VstToStr (const value* vst, mchar* result, char info, // see function declaration in
+wchar* VstToStr (const value* vst, wchar* result, char info, // see function declaration in
                  char base, char wplaces, short dplaces)     // _math.h for explanation
 {
     if(vst==NULL || result==NULL) return result;

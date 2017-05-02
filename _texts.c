@@ -14,17 +14,17 @@
 
 #define MSLLF 30  // maximum string length for loaded TWSF
 #define MSLLT 200 // maximum string length for loaded TWST
-static mchar loaded_TWSF [ID_TWSF_STOP][MSLLF+1]; // pointer to the loaded TWSF per ID
-static mchar loaded_TWST [ID_TWST_STOP][MSLLT+1]; // pointer to the loaded TWST per ID
+static wchar loaded_TWSF [ID_TWSF_STOP][MSLLF+1]; // pointer to the loaded TWSF per ID
+static wchar loaded_TWST [ID_TWST_STOP][MSLLT+1]; // pointer to the loaded TWST per ID
 
-const mchar* TWSF (enum ID_TWSF ID) { return loaded_TWSF[ID]; } // get loaded Text-With-Space-False
-const mchar* TWST (enum ID_TWST ID) { return loaded_TWST[ID]; } // get loaded Text-With-Space-True
+const wchar* TWSF (enum ID_TWSF ID) { return loaded_TWSF[ID]; } // get loaded Text-With-Space-False
+const wchar* TWST (enum ID_TWST ID) { return loaded_TWST[ID]; } // get loaded Text-With-Space-True
 
 
-bool texts_load_twst (const mchar* fileContent)
+bool texts_load_twst (const wchar* fileContent)
 {
     int i, k, ID, ending_size;
-    mchar c, data[MSLLT], *ending;
+    wchar c, data[MSLLT], *ending;
 
     // get the 'ending sequence' of non-space characters
     ID = End_Of_Text;
@@ -79,7 +79,7 @@ bool texts_load_twst (const mchar* fileContent)
             if(0==strcmp22S(ending, fileContent+i, ending_size)) break;
             data[k++] = c;
 
-            if(k >= MSLLT) { sprintf2 (errorMessage(), CST21("On loading text-with-space-true of ID = %s, text length is greater than maximum allowed of %s."), TIS2(0,ID), TIS2(1,MSLLT)); break; }
+            if(k >= MSLLT) { sprintf2(errorMessage(), L"On loading text-with-space-true of ID = %s, text length is greater than maximum allowed of %s.", TIS2(0,ID), TIS2(1,MSLLT)); break; }
         }
 
         // Copy loaded message to the corresponding ID pointer
@@ -90,10 +90,10 @@ bool texts_load_twst (const mchar* fileContent)
 }
 
 
-bool texts_load_twsf (const mchar* fileContent)
+bool texts_load_twsf (const wchar* fileContent)
 {
     int i, k, ID;
-    mchar c, data[MSLLF];
+    wchar c, data[MSLLF];
 
     for(i=1, c = fileContent[i]; c != '\0'; c = fileContent[++i])     // c is always equal to fileContent[i]
     {
@@ -138,7 +138,7 @@ bool texts_load_twsf (const mchar* fileContent)
         {
             data[k++] = c;
             c = fileContent[++i];
-            if(k >= MSLLF) { sprintf2 (errorMessage(), CST21("On loading text-with-space-false of ID = %s, text length is greater than maximum allowed of %s."), TIS2(0,ID), TIS2(1,MSLLF)); break; }
+            if(k >= MSLLF) { sprintf2(errorMessage(), L"On loading text-with-space-false of ID = %s, text length is greater than maximum allowed of %s.", TIS2(0,ID), TIS2(1,MSLLF)); break; }
         }
 
         // Copy loaded operation to the corresponding ID pointer
@@ -321,7 +321,7 @@ bool is_TWST_ID (int ID)
 }
 
 
-static const mchar default_twst_ENGLISH[] =
+static const wchar default_twst_ENGLISH[] =
 {
     48, 32, 84,104,105,115, 32,102,105,108,101, 32, 99,111,110,116, 97,105,110,115, 32,116,101,120,116,
    115, 44, 32,119,105,116,104, 32,115,112, 97, 99,101, 32, 97,108,108,111,119,101,100, 44, 32,116,104,
@@ -541,7 +541,7 @@ static const mchar default_twst_ENGLISH[] =
 };
 
 
-static const mchar default_twsf_ENGLISH[] =
+static const wchar default_twsf_ENGLISH[] =
 {
     48, 32, 84,104,105,115, 32,102,105,108,101, 32, 99,111,110,116, 97,105,110,115, 32,116,101,120,116,
    115, 44, 32,119,105,116,104, 32,110,111, 32,115,112, 97, 99,101, 44, 32,116,104, 97,116, 32, 97,114,
@@ -721,18 +721,18 @@ static const mchar default_twsf_ENGLISH[] =
 };
 
 
-static const mchar default_twst_FRENCH[] =
+static const wchar default_twst_FRENCH[] =
 {
    0
 };
 
-static const mchar default_twsf_FRENCH[] =
+static const wchar default_twsf_FRENCH[] =
 {
    0
 };
 
 
-const mchar* default_twst (enum LANGUAGE language)
+const wchar* default_twst (enum LANGUAGE language)
 {   switch(language){
         case ENGLISH: return default_twst_ENGLISH;
         case FRENCH:  return default_twst_FRENCH;
@@ -740,7 +740,7 @@ const mchar* default_twst (enum LANGUAGE language)
     return NULL;
 }
 
-const mchar* default_twsf (enum LANGUAGE language)
+const wchar* default_twsf (enum LANGUAGE language)
 {   switch(language){
         case ENGLISH: return default_twsf_ENGLISH;
         case FRENCH:  return default_twsf_FRENCH;

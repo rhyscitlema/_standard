@@ -13,12 +13,13 @@
 #ifndef CUSTOM_STDIO_H
 
 #include <stdio.h>
+#include <wchar.h>
 
 
 void wait() { printf("press enter... "); getchar(); }
 
 
-void putc2 (mchar chr) { putchar((char)chr); }
+void putc2 (wchar chr) { putwchar(chr); }
 
 
 bool file_to_array (const  char* filename,  char** filecontent_ptr, size_t *contentSize_ptr)
@@ -63,10 +64,10 @@ bool array_to_file (const char* filename, const char* filecontent, size_t conten
 #include <time.h>
 //#include <utime.h>
 
-bool file_is_modified (const mchar* fileName)
+bool file_is_modified (const wchar* fileName)
 {
     static time_t FileTime[100]={0};
-    static mchar* FileName[100]={0};
+    static wchar* FileName[100]={0};
     static int count=0;
 
     int i, err;
@@ -98,15 +99,15 @@ bool file_is_modified (const mchar* fileName)
 /*******************************************************************************************/
 
 
-void puts1 (const  char* str) { if(str) { while(*str) { putc2((mchar)*str); str++; } putc2('\n'); } }
+void puts1 (const  char* str) { if(str) { while(*str) { putc2((wchar)*str); str++; } putc2('\n'); } }
 
-void puts2 (const mchar* str) { if(str) { while(*str) { putc2(*str); str++; } putc2('\n'); } }
+void puts2 (const wchar* str) { if(str) { while(*str) { putc2(*str); str++; } putc2('\n'); } }
 
-void puts3 (const lchar* str) { if(str) { while(str->mchr) { putc2(str->mchr); str = str->next; } putc2('\n'); } }
+void puts3 (const lchar* str) { if(str) { while(str->wchr) { putc2(str->wchr); str = str->next; } putc2('\n'); } }
 
-void puts2S (const mchar* str, size_t length)
+void puts2S (const wchar* str, size_t length)
 {
-    const mchar* str_end = str + length;
+    const wchar* str_end = str + length;
     if(!str) return;
     if(length < 0) { puts2(str); return; }
     while(str != str_end)
@@ -116,11 +117,11 @@ void puts2S (const mchar* str, size_t length)
 
 void puts3LC (const lchar* str)
 {
-    if(str) while(str->mchr)
+    if(str) while(str->wchr)
     {
-        if(str->mchr=='\r') { putc2('\\'); putc2('r'); }
-        else if(str->mchr=='\n') { putc2('\\'); putc2('n'); }
-        else putc2(str->mchr);
+        if(str->wchr=='\r') { putc2('\\'); putc2('r'); }
+        else if(str->wchr=='\n') { putc2('\\'); putc2('n'); }
+        else putc2(str->wchr);
         printf(":%d:%d ", str->line, str->coln);
         str = str->next;
     }
@@ -131,9 +132,9 @@ void puts3LC (const lchar* str)
 /*******************************************************************************************/
 
 
-const mchar* get_extension_from_name (mchar* file_extension, const mchar* file_name)
+const wchar* get_extension_from_name (wchar* file_extension, const wchar* file_name)
 {
-    static mchar extension[10]; // 10 also used below
+    static wchar extension[10]; // 10 also used below
     size_t i, len;
 
     if(file_extension==NULL) file_extension = extension;
@@ -144,7 +145,7 @@ const mchar* get_extension_from_name (mchar* file_extension, const mchar* file_n
     len = strlen2(file_name);
     for(i=len; i>0; i--)
     {
-        mchar c = file_name[i-1];
+        wchar c = file_name[i-1];
         if(c=='/' || c=='|' || c=='\\') break;
         if(c=='.')
         {   if(len-i <= 10)
@@ -156,9 +157,9 @@ const mchar* get_extension_from_name (mchar* file_extension, const mchar* file_n
 }
 
 
-const mchar* get_name_from_path_name (mchar* file_name, const mchar* file_path_name)
+const wchar* get_name_from_path_name (wchar* file_name, const wchar* file_path_name)
 {
-    static mchar name[MAX_PATH_SIZE];
+    static wchar name[MAX_PATH_SIZE];
     size_t i, len;
 
     if(file_name==NULL) file_name = name;
@@ -169,7 +170,7 @@ const mchar* get_name_from_path_name (mchar* file_name, const mchar* file_path_n
     len = strlen2(file_path_name);
     for(i=len; i>0; i--)
     {
-        mchar c = file_path_name[i-1];
+        wchar c = file_path_name[i-1];
         if(c=='/' || c=='|' || c=='\\') break;
     }
     strcpy22( file_name, file_path_name + i);
@@ -177,9 +178,9 @@ const mchar* get_name_from_path_name (mchar* file_name, const mchar* file_path_n
 }
 
 
-const mchar* get_path_from_path_name (mchar* file_path, const mchar* file_path_name)
+const wchar* get_path_from_path_name (wchar* file_path, const wchar* file_path_name)
 {
-    static mchar path[MAX_PATH_SIZE];
+    static wchar path[MAX_PATH_SIZE];
     size_t i, len;
 
     if(file_path==NULL) file_path = path;
@@ -190,7 +191,7 @@ const mchar* get_path_from_path_name (mchar* file_path, const mchar* file_path_n
     len = strlen2(file_path_name);
     for(i=len; i>0; i--)
     {
-        mchar c = file_path_name[i-1];
+        wchar c = file_path_name[i-1];
         if(c=='/' || c=='|' || c=='\\') break;
     }
     strcpy22S( file_path, file_path_name, i);
@@ -198,9 +199,9 @@ const mchar* get_path_from_path_name (mchar* file_path, const mchar* file_path_n
 }
 
 
-const mchar* add_path_to_file_name (const mchar* file_path, const mchar* file_name)
+const wchar* add_path_to_file_name (const wchar* file_path, const wchar* file_name)
 {
-    static mchar fileName[MAX_PATH_SIZE];
+    static wchar fileName[MAX_PATH_SIZE];
     fileName[0]=0;
     size_t i;
 
@@ -210,7 +211,7 @@ const mchar* add_path_to_file_name (const mchar* file_path, const mchar* file_na
 
     for(i=0; file_name[i]!=0; i++)
     {
-        mchar c = file_name[i];
+        wchar c = file_name[i];
         if(c=='/' || c=='|' || c=='\\') break;
     }
     if(file_name[i]==0 && file_name[1]!=':') // for Windows' C: or D: or E:
@@ -221,7 +222,7 @@ const mchar* add_path_to_file_name (const mchar* file_path, const mchar* file_na
 }
 
 
-mchar default_file_path[MAX_PATH_SIZE];
+wchar default_file_path[MAX_PATH_SIZE];
 
 
 /*******************************************************************************************/
@@ -230,11 +231,11 @@ mchar default_file_path[MAX_PATH_SIZE];
 // to record whether opened file is of 1-byte or 2-bytes character
 static int type = 1;
 
-static void docopy (mchar* output, const mchar* input, size_t size)
+static void docopy (wchar* output, const wchar* input, size_t size)
 {
     while(size--)
     {
-        mchar c = *input++;
+        wchar c = *input++;
         if(type==3) c = (((c&0xFF)<<8) | ((c>>8)&0xFF));
         *output++ = c;
     }
@@ -242,12 +243,12 @@ static void docopy (mchar* output, const mchar* input, size_t size)
 }
 
 
-bool Openfile (const mchar* fileName, mchar** fileContent_ptr, size_t *contentSize_ptr)
+bool Openfile (const wchar* fileName, wchar** fileContent_ptr, size_t *contentSize_ptr)
 {
     size_t n=0, size;
     unsigned char* str;
     char* filecontent=NULL;
-    mchar* fileContent;
+    wchar* fileContent;
     const char* filename;
 
     filename = CST12(add_path_to_file_name(NULL, fileName));
@@ -284,7 +285,7 @@ bool Openfile (const mchar* fileName, mchar** fileContent_ptr, size_t *contentSi
             str += n; // skip the BOM of UTF-16
             size -= n;
             size /= 2;
-            docopy(fileContent, (mchar*)str, size);
+            docopy(fileContent, (wchar*)str, size);
         }
     }
     if(contentSize_ptr!=NULL) *contentSize_ptr = size;
@@ -294,7 +295,7 @@ bool Openfile (const mchar* fileName, mchar** fileContent_ptr, size_t *contentSi
 
 
 
-bool Savefile (const mchar* fileName, const mchar* fileContent, size_t contentSize)
+bool Savefile (const wchar* fileName, const wchar* fileContent, size_t contentSize)
 {
     size_t size;
     bool success;
@@ -312,18 +313,18 @@ bool Savefile (const mchar* fileName, const mchar* fileContent, size_t contentSi
     }
     else
     {
-        size = 2 + contentSize*sizeof(mchar);
+        size = 2 + contentSize*sizeof(wchar);
         filecontent = char_alloc(NULL, size);
 
         if(type==2)       // if is little-endian
-        {   filecontent[0] = 0xFF;
-            filecontent[1] = 0xFE;
+        {   filecontent[0] = (char)0xFF;
+            filecontent[1] = (char)0xFE;
         }
         else              // else is big-endian
-        {   filecontent[0] = 0xFE;
-            filecontent[1] = 0xFF;
+        {   filecontent[0] = (char)0xFE;
+            filecontent[1] = (char)0xFF;
         }
-        docopy((mchar*)(filecontent+2), fileContent, contentSize);
+        docopy((wchar*)(filecontent+2), fileContent, contentSize);
     }
 
     filename = CST12(add_path_to_file_name(NULL, fileName));

@@ -17,7 +17,7 @@ static inline lchar* lchar_new ()
 /***********************************************************************************************************/
 
 void  char_free ( char*  char_ptr) { if( char_ptr) memory_freed(" char"); _free( char_ptr); }
-void mchar_free (mchar* mchar_ptr) { if(mchar_ptr) memory_freed("mchar"); _free(mchar_ptr); }
+void mchar_free (wchar* mchar_ptr) { if(mchar_ptr) memory_freed("wchar"); _free(mchar_ptr); }
 void lchar_free (lchar* lchar_ptr)
 {
     while(lchar_ptr)
@@ -32,7 +32,7 @@ void lchar_free (lchar* lchar_ptr)
 
 
  char*  char_alloc ( char*  char_ptr, long size) { if(size==0) {  char_free( char_ptr); return NULL; } if(! char_ptr) memory_alloc(" char"); return ( char*) _realloc ( char_ptr, (size+1)*sizeof( char)); }
-mchar* mchar_alloc (mchar* mchar_ptr, long size) { if(size==0) { mchar_free(mchar_ptr); return NULL; } if(!mchar_ptr) memory_alloc("mchar"); return (mchar*) _realloc (mchar_ptr, (size+1)*sizeof(mchar)); }
+wchar* mchar_alloc (wchar* mchar_ptr, long size) { if(size==0) { mchar_free(mchar_ptr); return NULL; } if(!mchar_ptr) memory_alloc("wchar"); return (wchar*) _realloc (mchar_ptr, (size+1)*sizeof(wchar)); }
 lchar* lchar_alloc (lchar* lchar_ptr, long size)
 {
     lchar *lchr1, *lchr2;
@@ -58,8 +58,8 @@ lchar* lchar_alloc (lchar* lchar_ptr, long size)
 
 static  char* str12=NULL;
 static  char* str13=NULL;
-static mchar* str21=NULL;
-static mchar* str23=NULL;
+static wchar* str21=NULL;
+static wchar* str23=NULL;
 static lchar* str31=NULL;
 static lchar* str32=NULL;
 
@@ -90,18 +90,18 @@ void CST_clean()
     _strcpy(str,input); \
     return str; \
 }
-const  char* CST12 (const mchar* input) CST (str12, size12,  char_alloc, strlen12, strcpy12)
+const  char* CST12 (const wchar* input) CST (str12, size12,  char_alloc, strlen12, strcpy12)
 const  char* CST13 (const lchar* input) CST (str13, size13,  char_alloc, strlen3 , strcpy13)
-const mchar* CST21 (const  char* input) CST (str21, size21, mchar_alloc, strlen21, strcpy21)
-const mchar* CST23 (const lchar* input) CST (str23, size23, mchar_alloc, strlen3 , strcpy23)
+const wchar* CST21 (const  char* input) CST (str21, size21, mchar_alloc, strlen21, strcpy21)
+const wchar* CST23 (const lchar* input) CST (str23, size23, mchar_alloc, strlen3 , strcpy23)
 const lchar* CST31 (const  char* input) CST (str31, size31, lchar_alloc, strlen1 , strcpy31)
-const lchar* CST32 (const mchar* input) CST (str32, size32, lchar_alloc, strlen2 , strcpy32)
+const lchar* CST32 (const wchar* input) CST (str32, size32, lchar_alloc, strlen2 , strcpy32)
 
 
 /* Temporal Integer to String */
-const mchar* TIS2 (unsigned char count, long integer)
+const wchar* TIS2 (unsigned char count, long integer)
 {
-    static mchar str[20][64];
+    static wchar str[20][64];
     if(count >= 20) return NULL;
     intToStr (str[count], integer);
     return str[count];
@@ -120,33 +120,35 @@ const mchar* TIS2 (unsigned char count, long integer)
     return out; \
 }
  char* strcpy11 ( char* out, const  char* in) STRCPY ( char, *out, out++, *in, in++)
-mchar* strcpy22 (mchar* out, const mchar* in) STRCPY (mchar, *out, out++, *in, in++)
- char* strcpy13 ( char* out, const lchar* in) STRCPY ( char, *out, out++, in->mchr, in = in->next)
-mchar* strcpy23 (mchar* out, const lchar* in) STRCPY (mchar, *out, out++, in->mchr, in = in->next)
-lchar* strcpy31 (lchar* out, const  char* in) STRCPY (mchar, out->mchr, out = out->next, *in, in++)
-lchar* strcpy32 (lchar* out, const mchar* in) STRCPY (mchar, out->mchr, out = out->next, *in, in++)
+wchar* strcpy22 (wchar* out, const wchar* in) STRCPY (wchar, *out, out++, *in, in++)
+ char* strcpy13 ( char* out, const lchar* in) STRCPY ( char, *out, out++, in->wchr, in = in->next)
+wchar* strcpy23 (wchar* out, const lchar* in) STRCPY (wchar, *out, out++, in->wchr, in = in->next)
+lchar* strcpy31 (lchar* out, const  char* in) STRCPY (wchar, out->wchr, out = out->next, *in, in++)
+lchar* strcpy32 (lchar* out, const wchar* in) STRCPY (wchar, out->wchr, out = out->next, *in, in++)
 lchar* strcpy33 (lchar* out, const lchar* in)
 {
     if(out == NULL) return NULL;
-    if(in == NULL) out->mchr=0;
+    if(in == NULL) out->wchr=0;
     else while(1)
-    {   lchar_copy (out, in);
-        if(in->mchr == 0) break;
+    {
+        out->wchr = in->wchr;
+        lchar_copy(out, in);
+        if(in->wchr == 0) break;
         out = out->next;
         in = in->next;
     }
     return out;
 }
 
- char* strcpy12 ( char* out, const mchar* in) { return strcpy12S (out, in, strlen2(in)); }
-mchar* strcpy21 (mchar* out, const  char* in) { return strcpy21S (out, in, strlen1(in)); }
+ char* strcpy12 ( char* out, const wchar* in) { return strcpy12S (out, in, strlen2(in)); }
+wchar* strcpy21 (wchar* out, const  char* in) { return strcpy21S (out, in, strlen1(in)); }
 
- char* strcpy12S ( char* output, const mchar* input, long size)
+ char* strcpy12S ( char* output, const wchar* input, long size)
 {
     if(!output) return NULL;
     //assert(input!=NULL || size==0);
-    const mchar* end = input+size;
-    mchar c;
+    const wchar* end = input+size;
+    wchar c;
     while(input<end)
     {
         c = *input++;
@@ -163,13 +165,13 @@ mchar* strcpy21 (mchar* out, const  char* in) { return strcpy21S (out, in, strle
     return output;
 }
 
-mchar* strcpy21S (mchar* output, const  char* input, long size)
+wchar* strcpy21S (wchar* output, const  char* input, long size)
 {
     if(!output) return NULL;
     //assert(input!=NULL || size==0);
     const char* end = input+size;
     unsigned char i, j;
-    mchar c;
+    wchar c;
     while(input<end)
     {
         c = (unsigned char)*input;
@@ -197,22 +199,23 @@ mchar* strcpy21S (mchar* output, const  char* input, long size)
     outGet = 0; \
     return out; \
 }
-mchar* strcpy22S (mchar* out, const mchar* in, long size) STRCPYS (*out, out++, *in, in++)
-mchar* strcpy23S (mchar* out, const lchar* in, long size) STRCPYS (*out, out++, in->mchr, in = in->next)
-lchar* strcpy32S (lchar* out, const mchar* in, long size) STRCPYS (out->mchr, out = out->next, *in, in++)
+wchar* strcpy22S (wchar* out, const wchar* in, long size) STRCPYS (*out, out++, *in, in++)
+wchar* strcpy23S (wchar* out, const lchar* in, long size) STRCPYS (*out, out++, in->wchr, in = in->next)
+lchar* strcpy32S (lchar* out, const wchar* in, long size) STRCPYS (out->wchr, out = out->next, *in, in++)
 lchar* strcpy33S (lchar* out, const lchar* in, long size)
 {
     if(out == NULL) return NULL;
-    if(in == NULL) out->mchr=0;
+    if(in == NULL) out->wchr=0;
     else
     {   while(size--)
-        {   lchar_copy (out, in);
+        {   out->wchr = in->wchr;
+            lchar_copy(out, in);
             out = out->next;
             in = in->next;
         }
         if(in==NULL) in = out->prev;
-        lchar_copy (out, in);
-        out->mchr=0;
+        lchar_copy(out, in);
+        out->wchr=0;
     }
     return out;
 }
@@ -236,14 +239,14 @@ lchar* strcpy33S (lchar* out, const lchar* in, long size)
     return 0; \
 }
 int strcmp11 (const  char* str1, const  char* str2) STRCMP (*str1, str1++, *str2, str2++)
-int strcmp12 (const  char* str1, const mchar* str2) STRCMP (*str1, str1++, *str2, str2++)
-int strcmp21 (const mchar* str1, const  char* str2) STRCMP (*str1, str1++, *str2, str2++)
-int strcmp22 (const mchar* str1, const mchar* str2) STRCMP (*str1, str1++, *str2, str2++)
-int strcmp13 (const  char* str1, const lchar* str2) STRCMP (*str1, str1++, str2->mchr, str2 = str2->next)
-int strcmp23 (const mchar* str1, const lchar* str2) STRCMP (*str1, str1++, str2->mchr, str2 = str2->next)
-int strcmp31 (const lchar* str1, const  char* str2) STRCMP (str1->mchr, str1 = str1->next, *str2, str2++)
-int strcmp32 (const lchar* str1, const mchar* str2) STRCMP (str1->mchr, str1 = str1->next, *str2, str2++)
-int strcmp33 (const lchar* str1, const lchar* str2) STRCMP (str1->mchr, str1 = str1->next, str2->mchr, str2 = str2->next)
+int strcmp12 (const  char* str1, const wchar* str2) STRCMP (*str1, str1++, *str2, str2++)
+int strcmp21 (const wchar* str1, const  char* str2) STRCMP (*str1, str1++, *str2, str2++)
+int strcmp22 (const wchar* str1, const wchar* str2) STRCMP (*str1, str1++, *str2, str2++)
+int strcmp13 (const  char* str1, const lchar* str2) STRCMP (*str1, str1++, str2->wchr, str2 = str2->next)
+int strcmp23 (const wchar* str1, const lchar* str2) STRCMP (*str1, str1++, str2->wchr, str2 = str2->next)
+int strcmp31 (const lchar* str1, const  char* str2) STRCMP (str1->wchr, str1 = str1->next, *str2, str2++)
+int strcmp32 (const lchar* str1, const wchar* str2) STRCMP (str1->wchr, str1 = str1->next, *str2, str2++)
+int strcmp33 (const lchar* str1, const lchar* str2) STRCMP (str1->wchr, str1 = str1->next, str2->wchr, str2 = str2->next)
 
 
 #define STRCMPS(strcmp, str1Get, str1Next, str2Get, str2Next) \
@@ -261,9 +264,9 @@ int strcmp33 (const lchar* str1, const lchar* str2) STRCMP (str1->mchr, str1 = s
     } \
     return 0; \
 }
-int strcmp22S (const mchar* str1, const mchar* str2, long str2size) STRCMPS (strcmp22, *str1, str1++, *str2, str2++)
-int strcmp23S (const mchar* str1, const lchar* str2, long str2size) STRCMPS (strcmp23, *str1, str1++, str2->mchr, str2 = str2->next)
-int strcmp33S (const lchar* str1, const lchar* str2, long str2size) STRCMPS (strcmp33, str1->mchr, str1 = str1->next, str2->mchr, str2 = str2->next)
+int strcmp22S (const wchar* str1, const wchar* str2, long str2size) STRCMPS (strcmp22, *str1, str1++, *str2, str2++)
+int strcmp23S (const wchar* str1, const lchar* str2, long str2size) STRCMPS (strcmp23, *str1, str1++, str2->wchr, str2 = str2->next)
+int strcmp33S (const lchar* str1, const lchar* str2, long str2size) STRCMPS (strcmp33, str1->wchr, str1 = str1->next, str2->wchr, str2 = str2->next)
 
 
 /***********************************************************************************************************/
@@ -277,13 +280,13 @@ int strcmp33S (const lchar* str1, const lchar* str2, long str2size) STRCMPS (str
     return len; \
 }
 long strlen1 (const  char* string) STRLEN (*string, string++)
-long strlen2 (const mchar* string) STRLEN (*string, string++)
-long strlen3 (const lchar* string) STRLEN (string->mchr, string = string->next)
+long strlen2 (const wchar* string) STRLEN (*string, string++)
+long strlen3 (const lchar* string) STRLEN (string->wchr, string = string->next)
 
-long strlen12 (const mchar* str)
+long strlen12 (const wchar* str)
 {
     long len=0;
-    mchar c;
+    wchar c;
     if(str)
     {   while(true)
         {
@@ -302,7 +305,7 @@ long strlen21 (const  char* str)
 {
     long len=0;
     unsigned char i, j;
-    mchar c;
+    wchar c;
     if(str)
     {   while(true)
         {
@@ -323,9 +326,9 @@ long strlen21 (const  char* str)
     while(isSpace(strGet)) strNext; \
     return (strGet==stop || strGet=='\0'); \
 }
-bool isEmpty1 (const  char* str, mchar stop) IS_EMPTY (*str, str++)
-bool isEmpty2 (const mchar* str, mchar stop) IS_EMPTY (*str, str++)
-bool isEmpty3 (const lchar* str, mchar stop) IS_EMPTY (str->mchr, str = str->next)
+bool isEmpty1 (const  char* str, wchar stop) IS_EMPTY (*str, str++)
+bool isEmpty2 (const wchar* str, wchar stop) IS_EMPTY (*str, str++)
+bool isEmpty3 (const lchar* str, wchar stop) IS_EMPTY (str->wchr, str = str->next)
 
 
 
@@ -343,7 +346,7 @@ void strtrim1 (char* str)
 }
 
 /* trim (remove) leading and trailing spaces */
-void strtrim2 (mchar* str)
+void strtrim2 (wchar* str)
 {
     long i=0, j;
     for(j=0; str[j]==' '; j++);     // trim leading spaces
@@ -372,9 +375,9 @@ void strrev1 (char* str, long len)
 }
 
 /* reverse string of length 'len' */
-void strrev2 (mchar* str, long len)
+void strrev2 (wchar* str, long len)
 {
-    mchar temp;                     // used for swapping
+    wchar temp;                     // used for swapping
     long i;
     for(i=0; i<len/2; i++)          // from start to middle of string
     {

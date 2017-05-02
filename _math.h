@@ -104,13 +104,13 @@ value toFlt (value n); // mainly for Num to Flt/Com, important conversion!
 
 /*------------- get array from value structure -------------------*/
 
-bool floatFromVst(SmaFlt* output, const value* input, int count, mchar* errormessage, const char* name);
-bool integerFromVst (int* output, const value* input, int count, mchar* errormessage, const char* name);
+bool floatFromVst(SmaFlt* output, const value* input, int count, wchar* errormessage, const char* name);
+bool integerFromVst (int* output, const value* input, int count, wchar* errormessage, const char* name);
 
 
 /*----------------- string-value conversion ---------------------*/
 
-value StrToVal (const mchar* str);  // single output value
+value StrToVal (const wchar* str);  // single output value
 
 /*
     if(info&3 == 0) print the values (number and string) normally.
@@ -122,8 +122,8 @@ value StrToVal (const mchar* str);  // single output value
     On success, return end of result string. On error,
     set an error message as the result then return NULL.
 */
-mchar* VstToStr (const value* vst,  // input value structure
-                 mchar* result,     // output string to store result
+wchar* VstToStr (const value* vst,  // input value structure
+                 wchar* result,     // output string to store result
                  char info,         // extra information used
                  char base,         // base: 2, 8, 10, 16, or -1 for default
                  char  wplaces,     // number of whole places: -1 for default
@@ -131,21 +131,21 @@ mchar* VstToStr (const value* vst,  // input value structure
 
 
 
-static inline mchar* intToStr (mchar* str, SmaInt n)
+static inline wchar* intToStr (wchar* str, SmaInt n)
 {
     value y = setSmaInt(n);
     VstToStr(&y,str,0,-1,-1,-1);
     return str;
 }
 
-static inline mchar* fltToStr (mchar* str, SmaFlt n)
+static inline wchar* fltToStr (wchar* str, SmaFlt n)
 {
     value y = setSmaFlt(n);
     VstToStr(&y,str,0,-1,-1,-1);
     return str;
 }
 
-static inline bool strToInt (const mchar* str, int *n)
+static inline bool strToInt (const wchar* str, int *n)
 {
     value v = _floor(StrToVal(str));
     if(getType(v)) { *n = (int)getSmaInt(v); return true; }
@@ -153,7 +153,7 @@ static inline bool strToInt (const mchar* str, int *n)
         return false; }
 }
 
-static inline bool strToFlt (const mchar* str, SmaFlt *n)
+static inline bool strToFlt (const wchar* str, SmaFlt *n)
 {
     value v = toFlt(StrToVal(str));
     if(getType(v)) { *n = (int)getSmaFlt(v); return true; }

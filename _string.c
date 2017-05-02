@@ -12,7 +12,7 @@
 
 /******************************************************************************************/
 
-bool isOpenedBracket (mchar c)
+bool isOpenedBracket (wchar c)
 {
     if(c == *TWSF(Opened_Bracket_1)) return true;
     if(c == *TWSF(Opened_Bracket_2)) return true;
@@ -20,7 +20,7 @@ bool isOpenedBracket (mchar c)
     return false;
 }
 
-bool isClosedBracket (mchar c)
+bool isClosedBracket (wchar c)
 {
     if(c == *TWSF(Closed_Bracket_1)) return true;
     if(c == *TWSF(Closed_Bracket_2)) return true;
@@ -28,21 +28,19 @@ bool isClosedBracket (mchar c)
     return false;
 }
 
-mchar OpenedToClosedBracket (mchar c)
+wchar OpenedToClosedBracket (wchar c)
 {
     if(c == *TWSF(Opened_Bracket_1)) return *TWSF(Closed_Bracket_1);
     if(c == *TWSF(Opened_Bracket_2)) return *TWSF(Closed_Bracket_2);
     if(c == *TWSF(Opened_Bracket_3)) return *TWSF(Closed_Bracket_3);
-    printf("--Error in OpenedToClosedBracket()  c = %d.\n", c);
     return 0;
 }
 
-mchar ClosedToOpenedBracket (mchar c)
+wchar ClosedToOpenedBracket (wchar c)
 {
     if(c == *TWSF(Closed_Bracket_1)) return *TWSF(Opened_Bracket_1);
     if(c == *TWSF(Closed_Bracket_2)) return *TWSF(Opened_Bracket_2);
     if(c == *TWSF(Closed_Bracket_3)) return *TWSF(Opened_Bracket_3);
-    printf("Software Error: in ClosedToOpenedBracket()  c = %d.\n", c);
     return 0;
 }
 
@@ -54,7 +52,7 @@ mchar ClosedToOpenedBracket (mchar c)
 // pifcn => partly is fully code number
 // 6 = sizeof("\uXXXX")
 
-static mchar* buffer = NULL;
+static wchar* buffer = NULL;
 
 static bool pifcn[0x10000] = {false};
 
@@ -64,9 +62,9 @@ static void initial_set_pif_cn ()
     pifcn[0xFFFF] = true;
 }
 
-static bool mstr_to_mchar (mchar *c, const mchar* str)
+static bool mstr_to_mchar (wchar *c, const wchar* str)
 {
-    mchar i, t, n=0;
+    wchar i, t, n=0;
     if(c==NULL) return false;
     for(i=0; i<4; i++)
     {
@@ -78,7 +76,7 @@ static bool mstr_to_mchar (mchar *c, const mchar* str)
     else { *c = n; return true; }
 }
 
-static mchar* mchar_to_mstr (mchar* str, mchar c)
+static wchar* mchar_to_mstr (wchar* str, wchar c)
 {
     if(str==NULL) return NULL;
     *str++ = '\\';
@@ -91,13 +89,13 @@ static mchar* mchar_to_mstr (mchar* str, mchar c)
     return str;
 }
 
-const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input)
+const wchar* pcn_to_chr_22 (wchar** output_ptr, const wchar* input)
 {
     long size = strlen2(input);
     if(size==0) return NULL;
 
     buffer = mchar_alloc (buffer, size);
-    mchar* output = buffer;
+    wchar* output = buffer;
 
     for( ; *input!=0; input++)
     {
@@ -126,15 +124,15 @@ const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input)
     return buffer;
 }
 
-const mchar* chr_to_pcn_22 (mchar** output_ptr, const mchar* input)
+const wchar* chr_to_pcn_22 (wchar** output_ptr, const wchar* input)
 {
     long size = strlen2(input);
     if(size==0) return NULL;
-    initial_set_pif_cn();
 
     buffer = mchar_alloc (buffer, size*6);
-    mchar* output = buffer;
+    wchar* output = buffer;
 
+    initial_set_pif_cn();
     for( ; *input!=0; input++)
     {
         if(pifcn[*input])
@@ -154,21 +152,23 @@ const mchar* chr_to_pcn_22 (mchar** output_ptr, const mchar* input)
     return buffer;
 }
 
-const mchar* chr_to_fcn_22 (mchar** output_ptr, const mchar* input)
+const wchar* chr_to_fcn_22 (wchar** output_ptr, const wchar* input)
 {
-    mchar* output;
-    if(input==NULL) return NULL;
-    buffer = mchar_alloc (buffer, strlen2(input)*6);
-    output = buffer;
+    long size = strlen2(input);
+    if(size==0) return NULL;
+
+    buffer = mchar_alloc (buffer, size*6);
+    wchar* output = buffer;
+
     while(*input!=0) output = mchar_to_mstr (output, *input++);
     astrcpy22(output_ptr, buffer);
     return buffer;
 }
 
-bool set_pif_cn (const mchar* str)
+bool set_pif_cn (const wchar* str)
 {
     bool found=false;
-    mchar c;
+    wchar c;
     int i;
     for(i=0; str[i] != 0; i++)
     {
@@ -185,11 +185,11 @@ bool set_pif_cn (const mchar* str)
 
 /******************************************************************************************/
 
-static const mchar placeHolder[] = {'%','s', 0};
+static const wchar placeHolder[] = {'%','s', 0};
 
-mchar* sprintf2 (mchar* output, const mchar* format, ...)
+wchar* sprintf2 (wchar* output, const wchar* format, ...)
 {
-    mchar *str;
+    wchar *str;
     int pHSize;
 
     va_list varg;           // start of variable argument list
@@ -203,7 +203,7 @@ mchar* sprintf2 (mchar* output, const mchar* format, ...)
             *output++ = *format++;
         else
         {
-            str = va_arg (varg, mchar*); // get next argument as an mchar* (string)
+            str = va_arg (varg, wchar*); // get next argument as an wchar* (string)
             if(str) while(*str) *output++ = *str++;
             format += pHSize;
         }
@@ -215,11 +215,11 @@ mchar* sprintf2 (mchar* output, const mchar* format, ...)
 
 
 
-void set_message (mchar* output, const mchar* format, const lchar* lstr, ...)
+void set_message (wchar* output, const wchar* format, const lchar* lstr, ...)
 {
     int id, pHSize, args=0;
-    mchar temp[50];
-    const mchar* argv[10];
+    wchar temp[50];
+    const wchar* argv[10];
 
     va_list varg;
     if(lstr==NULL) return;
@@ -240,7 +240,7 @@ void set_message (mchar* output, const mchar* format, const lchar* lstr, ...)
             strcpy22S (temp, format+1, pHSize-1);
             id=0; strToInt (temp, &id);
 
-                 if(id==1) strcpy22 (output, lstr->file);
+                 if(id==1) strcpy22 (output, lchar_get_source(*lstr));
             else if(id==2) strcpy22 (output, intToStr(temp,lstr->line));
             else if(id==3) strcpy22 (output, intToStr(temp,lstr->coln));
             else if(id==4) strcpy23 (output, lstr);
@@ -250,7 +250,7 @@ void set_message (mchar* output, const mchar* format, const lchar* lstr, ...)
                 if(id<0 || id>=10) { *output++ = *format++; continue; }
 
                 while(args<=id) // get arguments after 'lstr'
-                    argv[args++] = va_arg (varg, const mchar*);
+                    argv[args++] = va_arg (varg, const wchar*);
 
                 strcpy22 (output, argv[id]);
             }
@@ -270,12 +270,12 @@ void set_message (mchar* output, const mchar* format, const lchar* lstr, ...)
    3) abc "def" ghi // 3 blocks: 'abc' 'def' 'ghi'
    4) abc"def "ghi  // 3 blocks: 'abc' 'def ' 'ghi'
 */
-const mchar* sgets2 (const mchar* input, mchar** output)
+const wchar* sgets2 (const wchar* input, wchar** output)
 {
-    const mchar* start=NULL; // _char
+    const wchar* start=NULL; // _char
     int onLoad=0;
     int size=0;
-    mchar c;
+    wchar c;
     if(input==NULL) return NULL;
     while(1)
     {
@@ -302,11 +302,11 @@ const lchar* sgets3 (const lchar* input, lchar** output)
     const lchar* start=NULL; // _char
     int onLoad=0;
     int size=0;
-    mchar c;
+    wchar c;
     if(input==NULL) return NULL;
     while(1)
     {
-        c = input->mchr; // inGet
+        c = input->wchr; // inGet
         if(c==0) break;
         if(c=='"')
         {   input = input->next; // inNext
@@ -329,26 +329,26 @@ const lchar* sgets3 (const lchar* input, lchar** output)
 const lchar* lchar_next (const lchar* lstr)
 {
     int level;
-    mchar a, b;
+    wchar a, b;
     while(1) // not a loop
     {
-        if(lstr->mchr != '#')
+        if(lstr->wchr != '#')
         { lstr = lstr->next;
-          if(lstr->mchr != '#') break; }
+          if(lstr->wchr != '#') break; }
 
         lstr = lstr->next;
-        if(lstr->mchr != '{') // skip till '\n' is found, excluding it
-        { while(lstr->mchr != 0 && lstr->mchr != '\n') lstr = lstr->next; break; }
+        if(lstr->wchr != '{') // skip till '\n' is found, excluding it
+        { while(lstr->wchr != 0 && lstr->wchr != '\n') lstr = lstr->next; break; }
 
         // else: skip till '}#' is found, including it
         level=1;
         lstr = lstr->next;
-        b = lstr->mchr;
+        b = lstr->wchr;
         while(b!=0)
         {
             lstr = lstr->next;
             a = b;
-            b = lstr->mchr;
+            b = lstr->wchr;
             if(a=='#' && b=='{') level++;
             if(a=='}' && b=='#')
             { if(--level==0) { lstr = lstr->next; break; } }
@@ -367,7 +367,7 @@ const lchar* lchar_goto (const lchar* lstr, int offset)
     {
         for( ; offset != 0; offset++)
         {
-            if(lstr->prev==0 || lstr->prev->mchr==0) break;
+            if(lstr->prev==0 || lstr->prev->wchr==0) break;
             if(lstr->prev) lstr = lstr->prev;
         }
     }
@@ -375,7 +375,7 @@ const lchar* lchar_goto (const lchar* lstr, int offset)
     {
         for( ; offset != 0; offset--)
         {
-            if(lstr->mchr==0) break;
+            if(lstr->wchr==0) break;
             if(lstr->next) lstr = lstr->next;
         }
     }
@@ -384,31 +384,33 @@ const lchar* lchar_goto (const lchar* lstr, int offset)
 
 
 
-static mchar* names[1000] = {0};
-static int count = 0;
-static const mchar* submitSourceName (const mchar* name)
+static wchar* names[1000] = {NULL};
+static unsigned short count = 1; // keep [0]==NULL
+static unsigned short submitSourceName (const wchar* name)
 {
-    int i;
+    unsigned short i;
     for(i=0; i<count; i++)
         if(0==strcmp22(names[i], name))
-            return names[i];
-    //printf("Inside submitSourceName: name = '%s'\n", CST12(name));
-    astrcpy22(&names[i], name);
-    if(count+1 < SIZEOF(names)) count++;
-    return names[i];
+            break;
+    if(i==count)
+    {   astrcpy22(&names[i], name);
+        if(count+1 < SIZEOF(names)) count++;
+    }
+    return i;
 }
+const wchar* lchar_get_source (lchar lchr) { return names[lchr.source]; }
 
-void set_line_coln_file (lchar* lstr, int line, int coln, const mchar* file)
+void set_line_coln_source (lchar* lstr, int line, int coln, const wchar* sourceName)
 {
     if(!lstr) return;
-    file = submitSourceName(file);
+    int sourceID = submitSourceName(sourceName);
     while(true)
     {
         lstr->line = line;
         lstr->coln = coln;
-        if(file) lstr->file = file;
-        if(lstr->mchr == 0) break;
-        if(lstr->mchr == '\n')
+        if(sourceName) lstr->source = sourceID;
+        if(lstr->wchr == 0) break;
+        if(lstr->wchr == '\n')
         { line++; coln=1; }
         else coln++;
         lstr = lstr->next;

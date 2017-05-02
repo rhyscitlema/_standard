@@ -7,7 +7,7 @@
 #include <string.h>
 #include "_strfun.h"
 
-mchar* errorMessage();
+wchar* errorMessage();
 
 #define ErrStr0 (errormessage+1000)
 #define ErrStr1 (errormessage+2000)
@@ -15,14 +15,15 @@ mchar* errorMessage();
 
 
 
-const mchar* sgets2 (const mchar* input, mchar** output);
+const wchar* sgets2 (const wchar* input, wchar** output);
 const lchar* sgets3 (const lchar* input, lchar** output);
 
 const lchar* lchar_next (const lchar* lstr);
 const lchar* lchar_goto (const lchar* lstr, int offset);
 
-/* if file==NULL then the file lchar structure member is ignored */
-void set_line_coln_file (lchar* lstr, int first_line, int first_coln, const mchar* file);
+/* if source==NULL then the source lchar structure member is ignored */
+void set_line_coln_source (lchar* lstr, int first_line, int first_coln, const wchar* source);
+const wchar* lchar_get_source (lchar lchr);
 
 void string_c_clean(); // to free memory, best called upon software exit
 
@@ -35,22 +36,22 @@ void string_c_clean(); // to free memory, best called upon software exit
 #define HEXtoCHR(c) (((c)>=0x0 && (c)<=0x9) ? (c)-0x0+'0' : \
                      ((c)>=0xA && (c)<=0xF) ? (c)-0xA+'A' : 0)
 
-static inline bool isSpace (mchar c) { return  (c==' ' || c=='\t' || c=='\r' || c=='\n'); }
-static inline bool isDigit (mchar c) { return  (c>='0' && c<='9'); }
-static inline bool isHexad (mchar c) { return ((c>='0' && c<='9') || (c>='A' && c<='F') || (c>='a' && c<='f')); }
-static inline bool isAlpNu (mchar c) { return ((c>='0' && c<='9') || (c>='A' && c<='Z') || (c>='a' && c<='z')); }
+static inline bool isSpace (wchar c) { return  (c==' ' || c=='\t' || c=='\r' || c=='\n'); }
+static inline bool isDigit (wchar c) { return  (c>='0' && c<='9'); }
+static inline bool isHexad (wchar c) { return ((c>='0' && c<='9') || (c>='A' && c<='F') || (c>='a' && c<='f')); }
+static inline bool isAlpNu (wchar c) { return ((c>='0' && c<='9') || (c>='A' && c<='Z') || (c>='a' && c<='z')); }
 
-bool isOpenedBracket (mchar c);
-bool isClosedBracket (mchar c);
-mchar OpenedToClosedBracket (mchar c);
-mchar ClosedToOpenedBracket (mchar c);
+bool isOpenedBracket (wchar c);
+bool isClosedBracket (wchar c);
+wchar OpenedToClosedBracket (wchar c);
+wchar ClosedToOpenedBracket (wchar c);
 
 
 
-const mchar* pcn_to_chr_22 (mchar** output_ptr, const mchar* input); // Partly Code Number to Character
-const mchar* chr_to_pcn_22 (mchar** output_ptr, const mchar* input); // Character to Partly Code Number
-const mchar* chr_to_fcn_22 (mchar** output_ptr, const mchar* input); // Character to Fully Code Number
-bool set_pif_cn (const mchar* str); // Set Partly is Fully Code Number
+const wchar* pcn_to_chr_22 (wchar** output_ptr, const wchar* input); // Partly Code Number to Character
+const wchar* chr_to_pcn_22 (wchar** output_ptr, const wchar* input); // Character to Partly Code Number
+const wchar* chr_to_fcn_22 (wchar** output_ptr, const wchar* input); // Character to Fully Code Number
+bool set_pif_cn (const wchar* str); // Set Partly is Fully Code Number
 /* return false if input string is invalid */
 
 
@@ -62,9 +63,9 @@ bool set_pif_cn (const mchar* str); // Set Partly is Fully Code Number
 #define sprintf1 sprintf
 #endif
 
-mchar* sprintf2 (mchar* output, const mchar* format, ...);
+wchar* sprintf2 (wchar* output, const wchar* format, ...);
 
-void set_message (mchar* output, const mchar* format, const lchar* lstr, ...);
+void set_message (wchar* output, const wchar* format, const lchar* lstr, ...);
 
 
 
@@ -85,8 +86,8 @@ void set_message (mchar* output, const mchar* format, const lchar* lstr, ...);
     else puts2(output_string); // output_string contains the error message
 */
 extern const value* mfet_parse_and_evaluate (
-    const mchar* mfet_string,   /* string to be parsed and evaluated */
-    const mchar* source_name,   /* source of mfet_string, if NULL then "input" is used */
+    const wchar* mfet_string,   /* string to be parsed and evaluated */
+    const wchar* source_name,   /* source of mfet_string, if NULL then "input" is used */
     const value* result_vst);   /* the 'expected' result value structure, NULL for any */
 
 #endif

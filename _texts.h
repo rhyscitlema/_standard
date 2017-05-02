@@ -194,15 +194,15 @@ enum ID_TWST
 };
 
 
-const mchar* TWSF (enum ID_TWSF ID); // get loaded Text-With-Space-False
-const mchar* TWST (enum ID_TWST ID); // get loaded Text-With-Space-True
+const wchar* TWSF (enum ID_TWSF ID); // get loaded Text-With-Space-False
+const wchar* TWST (enum ID_TWST ID); // get loaded Text-With-Space-True
 
-bool texts_load_twsf (const mchar* fileContent);
-bool texts_load_twst (const mchar* fileContent);
+bool texts_load_twsf (const wchar* fileContent);
+bool texts_load_twst (const wchar* fileContent);
 
 enum LANGUAGE { ENGLISH, FRENCH };
-const mchar* default_twsf (enum LANGUAGE language);
-const mchar* default_twst (enum LANGUAGE language);
+const wchar* default_twsf (enum LANGUAGE language);
+const wchar* default_twst (enum LANGUAGE language);
 
 bool is_TWSF_ID (int ID);
 bool is_TWST_ID (int ID);

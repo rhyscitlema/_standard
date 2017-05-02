@@ -77,7 +77,7 @@ const char* vst_to_str (const value* vst)
         j = getType(v);
         switch((int)j)
         {
-        case aPoiter: str += sprintf(str, "ptr(%d,%p)", j, getPoiter(v)); break;
+        case aPoiter: str += sprintf(str, "ptr(%d,%p)", j, (void*)getPoiter(v)); break;
         case aSeptor: str += sprintf(str, "sep(%d,%ld,%ld)", j, getSeptor(v).len, getSeptor(v).cols); break;
         case aString: strcpy13(tstr, getString(v)); str += sprintf(str, "t(%d,%s)", j, tstr); break;
         case aSmaInt: str += sprintf(str, "si(%d,%ld)", j, (long)getSmaInt(v)); break;
