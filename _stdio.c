@@ -10,7 +10,7 @@
 /*******************************************************************************************/
 
 
-#ifndef CUSTOM_STDIO_H
+#ifndef USE_CUSTOM_STDIO_H
 
 #include <stdio.h>
 #include <wchar.h>
@@ -35,14 +35,19 @@ bool file_to_array (const  char* filename,  char** filecontent_ptr, size_t *cont
     fseek (file, 0, SEEK_SET);
     if(size==0x7FFFFFFF) { fclose(file); return false; }
 
-    if(contentSize_ptr!=NULL) *contentSize_ptr = size;
-    if(filecontent_ptr!=NULL)
+    if(contentSize_ptr) *contentSize_ptr = size;
+    if(filecontent_ptr)
     {
         filecontent = (char*) _realloc (*filecontent_ptr, size+1);
         *filecontent_ptr = filecontent;
 
         if(fread (filecontent, 1, size, file) != size)
-        { fclose(file); return false; }
+        {
+            _free(filecontent);
+            *filecontent_ptr=NULL;
+            fclose(file);
+            return false;
+        }
         filecontent[size]=0;
     }
     fclose(file);
@@ -53,10 +58,10 @@ bool file_to_array (const  char* filename,  char** filecontent_ptr, size_t *cont
 bool array_to_file (const char* filename, const char* filecontent, size_t contentSize)
 {
     FILE* file = fopen(filename, "wb");
-    if(file==NULL) return 0;
+    if(file==NULL) return false;
     fwrite(filecontent, 1, contentSize, file);
     fclose(file);
-    return 1;
+    return true;
 }
 
 
@@ -75,13 +80,18 @@ bool file_is_modified (const wchar* fileName)
     const char* path_name = CST12(add_path_to_file_name(NULL, fileName));
 
     err = stat (path_name, &file_stat);
-    if(err!=0) { /*printf("In file_is_modified(): error on calling stat().\r\n");*/ return false; }
+    if(err!=0)
+    {   //printf("In file_is_modified(): error on calling stat().\r\n");
+        return false;
+    }
 
     for(i=0; i<count; i++) if(0==strcmp22(FileName[i], fileName)) break;
     if(i==count) astrcpy22(&FileName[i], fileName);
 
     if(file_stat.st_mtime <= FileTime[i])
-    { /*printf("In file_is_modified(): On '%s': file_stat.mtime <= FileTime[%d]\r\n", CST12(fileName), i);*/ return false; }
+    {   //printf("In file_is_modified(): On '%s': file_stat.mtime <= FileTime[%d]\r\n", CST12(fileName), i);
+        return false;
+    }
 
     FileTime[i] = file_stat.st_mtime;
     //printf("In file_is_modified():   FileName[%d] = %s   FileTime[%d] = %lld\r\n", i, CST12(FileName[i]), i, (long long)FileTime[i]);
@@ -229,7 +239,7 @@ wchar default_file_path[MAX_PATH_SIZE];
 
 
 // to record whether opened file is of 1-byte or 2-bytes character
-static int type = 1;
+static int type = 1; // assume UTF-8 encoding
 
 static void docopy (wchar* output, const wchar* input, size_t size)
 {

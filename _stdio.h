@@ -9,7 +9,7 @@
 #define MAX_PATH_SIZE 300 /* also maximum file name */
 
 
-void wait(); /* wait for user to press enter on CLI */
+void wait(); /* wait for user to press Enter on CLI */
 
 /* these 2 are explicitly provided by the platform-dependent code */
 void wait_for_user_first   (const wchar* title, const wchar* message);

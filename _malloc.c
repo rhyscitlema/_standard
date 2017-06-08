@@ -14,11 +14,9 @@
 
 
 
-#ifndef CUSTOM_MALLOC_H
+#ifndef USE_CUSTOM_MALLOC_H
 
 #include <malloc.h>
-
-void useFreeMemory (void* freeMemoryArray, long freeMemorySize) {}
 
 void* _malloc (long size)
 { memory_alloc("Memory"); return malloc(size); }
@@ -29,14 +27,11 @@ void* _realloc (void* address, long size)
 void _free (void* address)
 { if(address) memory_freed("Memory"); free(address); }
 
-long getFragmentsCount ()
-{ return 0; }
-
 #else
 
 
-#include <_stdio.h>
 
+#include <_stdio.h>
 
 typedef struct _FreeMemory
 {
@@ -47,7 +42,6 @@ typedef struct _FreeMemory
 } FreeMemory;
 
 static FreeMemory *firstFreeMemory = NULL;
-
 
 static void deleteNode (FreeMemory *freeMemory)
 {
@@ -282,7 +276,7 @@ long getFragmentsCount ()
     return fragmentsCount;
 }
 
-#endif // end of #else of #ifndef CUSTOM_MALLOC_H
+#endif // end of #else of #ifndef USE_CUSTOM_MALLOC_H
 
 
 
@@ -300,51 +294,51 @@ void* meminc (void* old_mem, long old_size, long new_size)
 
 /***********************************************************************************************************/
 
-#ifndef NDEBUG
+#ifdef DEBUG
 
 #include "_strfun.h"
 #include <stdio.h> // TODO: removing this does not cause an error in Ubuntu-GCC, why?
 #include <assert.h>
 
 typedef struct _MEM {
-    const char* str;
+    const char* name;
     int alloc, freed;
 } MEM;
 
-static MEM mem[20];
+static MEM mem[100];
 
-void memory_alloc (const char* str)
+void memory_alloc (const char* name)
 {
     int i;
-    for(i=0; mem[i].str!=NULL; i++)
-        if(0==strcmp(str, mem[i].str))
+    for(i=0; mem[i].name!=NULL; i++)
+        if(0==strcmp(name, mem[i].name))
         { mem[i].alloc++; break; }
-    if(!mem[i].str)
-    {   mem[i].str = str;
+    if(!mem[i].name)
+    {   mem[i].name = name;
         mem[i].alloc = 1;
     }
 }
 
-void memory_freed (const char* str)
+void memory_freed (const char* name)
 {
     int i;
-    for(i=0; mem[i].str!=NULL; i++)
-        if(0==strcmp(str, mem[i].str))
+    for(i=0; mem[i].name!=NULL; i++)
+        if(0==strcmp(name, mem[i].name))
         { mem[i].freed++; break; }
-    if(!mem[i].str) printf("Software Error in memory_freed: '%s' not found.\n",str);
-    assert(mem[i].str!=NULL);
+    if(mem[i].name==NULL) printf("Software Error in memory_freed: '%s' not found.\n", name);
+    assert(mem[i].name!=NULL);
 }
 
 void memory_print ()
 {
     int i;
-    for(i=0; mem[i].str!=NULL; i++)
+    for(i=0; mem[i].name!=NULL; i++)
         printf("%-15s:   alloc = %-7d   freed = %-7d   difference = %d\n",
-            mem[i].str, mem[i].alloc, mem[i].freed, mem[i].alloc - mem[i].freed);
+            mem[i].name, mem[i].alloc, mem[i].freed, mem[i].alloc - mem[i].freed);
     printf("\n");
 }
 
-#endif
+#endif // end of #ifdef DEBUG
 
 
 /***********************************************************************************************************/
