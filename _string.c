@@ -62,7 +62,7 @@ static void initial_set_pif_cn ()
     pifcn[0xFFFF] = true;
 }
 
-static bool mstr_to_mchar (wchar *c, const wchar* str)
+static bool mstr_to_wchar (wchar *c, const wchar* str)
 {
     wchar i, t, n=0;
     if(c==NULL) return false;
@@ -76,7 +76,7 @@ static bool mstr_to_mchar (wchar *c, const wchar* str)
     else { *c = n; return true; }
 }
 
-static wchar* mchar_to_mstr (wchar* str, wchar c)
+static wchar* wchar_to_mstr (wchar* str, wchar c)
 {
     if(str==NULL) return NULL;
     *str++ = '\\';
@@ -94,7 +94,7 @@ const wchar* pcn_to_chr_22 (wchar** output_ptr, const wchar* input)
     long size = strlen2(input);
     if(size==0) return NULL;
 
-    buffer = mchar_alloc (buffer, size);
+    buffer = wchar_alloc (buffer, size);
     wchar* output = buffer;
 
     for( ; *input!=0; input++)
@@ -109,7 +109,7 @@ const wchar* pcn_to_chr_22 (wchar** output_ptr, const wchar* input)
             case 'r' : *output++ = '\r'; break;
             case 'n' : *output++ = '\n'; break;
             case 'u' : // if \uXXXX found
-                if(mstr_to_mchar(output, input+1) && (*output!=0))
+                if(mstr_to_wchar(output, input+1) && (*output!=0))
                 {   output++;
                     input += 4; // skip the \uXXXX
                     break;
@@ -129,14 +129,14 @@ const wchar* chr_to_pcn_22 (wchar** output_ptr, const wchar* input)
     long size = strlen2(input);
     if(size==0) return NULL;
 
-    buffer = mchar_alloc (buffer, size*6);
+    buffer = wchar_alloc (buffer, size*6);
     wchar* output = buffer;
 
     initial_set_pif_cn();
     for( ; *input!=0; input++)
     {
         if(pifcn[*input])
-        { output = mchar_to_mstr (output, *input); continue; }
+        { output = wchar_to_mstr (output, *input); continue; }
 
         switch(*input)
         {
@@ -157,10 +157,10 @@ const wchar* chr_to_fcn_22 (wchar** output_ptr, const wchar* input)
     long size = strlen2(input);
     if(size==0) return NULL;
 
-    buffer = mchar_alloc (buffer, size*6);
+    buffer = wchar_alloc (buffer, size*6);
     wchar* output = buffer;
 
-    while(*input!=0) output = mchar_to_mstr (output, *input++);
+    while(*input!=0) output = wchar_to_mstr (output, *input++);
     astrcpy22(output_ptr, buffer);
     return buffer;
 }
@@ -174,7 +174,7 @@ bool set_pif_cn (const wchar* str)
     {
         if((str[i+0] == '\\')
         && (str[i+1] == 'u')
-        && mstr_to_mchar(&c, &str[i+2]))
+        && mstr_to_wchar(&c, &str[i+2]))
         { pifcn[c] = true; found=true; i+=6-1; }
     }
     if(!found) strcpy21(errorMessage(), "No code number found in given text.");
@@ -328,8 +328,6 @@ const lchar* sgets3 (const lchar* input, lchar** output)
 
 const lchar* lchar_next (const lchar* lstr)
 {
-    int level;
-    wchar a, b;
     while(1) // not a loop
     {
         if(lstr->wchr != '#')
@@ -341,7 +339,8 @@ const lchar* lchar_next (const lchar* lstr)
         { while(lstr->wchr != 0 && lstr->wchr != '\n') lstr = lstr->next; break; }
 
         // else: skip till '}#' is found, including it
-        level=1;
+        wchar a, b;
+        int level=1;
         lstr = lstr->next;
         b = lstr->wchr;
         while(b!=0)
@@ -420,11 +419,11 @@ void set_line_coln_source (lchar* lstr, int line, int coln, const wchar* sourceN
 
 void string_c_clean()
 {
-    mchar_free(buffer); buffer=NULL;
+    wchar_free(buffer); buffer=NULL;
     int i;
     for(i=0; i<count; i++)
     {
-        mchar_free(names[i]);
+        wchar_free(names[i]);
         names[i] = NULL;
     }
 }

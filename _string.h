@@ -70,12 +70,12 @@ void set_message (wchar* output, const wchar* format, const lchar* lstr, ...);
 
 
 /*
-    The below is defined only in libmfet.
+    The below is defined only in librfet.
     It is a once-off evaluation.
     Returns non-NULL on success.
     Typical usage is:
 
-    const value* result = mfet_parse_and_evaluate(input_string, NULL);
+    const value* result = rfet_parse_and_evaluate(input_string, NULL);
 
     if(result==NULL) puts2(errorMessage());
 
@@ -85,9 +85,9 @@ void set_message (wchar* output, const wchar* format, const lchar* lstr, ...);
 
     else puts2(output_string); // output_string contains the error message
 */
-extern const value* mfet_parse_and_evaluate (
-    const wchar* mfet_string,   /* string to be parsed and evaluated */
-    const wchar* source_name,   /* source of mfet_string, if NULL then "input" is used */
+extern const value* rfet_parse_and_evaluate (
+    const wchar* rfet_string,   /* string to be parsed and evaluated */
+    const wchar* source_name,   /* source of rfet_string, if NULL then "input" is used */
     const value* result_vst);   /* the 'expected' result value structure, NULL for any */
 
 #endif

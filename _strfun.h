@@ -8,11 +8,11 @@
 
 
  char*  char_alloc ( char*  char_ptr, long size);
-wchar* mchar_alloc (wchar* mchar_ptr, long size);
+wchar* wchar_alloc (wchar* wchar_ptr, long size);
 lchar* lchar_alloc (lchar* lchar_ptr, long size);
 
 void  char_free ( char*  char_ptr);
-void mchar_free (wchar* mchar_ptr);
+void wchar_free (wchar* wchar_ptr);
 void lchar_free (lchar* lchar_ptr);
 
 // note: memory for NULL terminator is not implicitly assumed
@@ -85,15 +85,15 @@ lchar* strcpy33S (lchar* output, const lchar* input, long size);
 static inline void astrcpy11 ( char** outp, const  char* in) { if(outp && *outp!=in) { *outp =  char_alloc(*outp, strlen1 (in)); strcpy11(*outp, in); }}
 static inline void astrcpy12 ( char** outp, const wchar* in) { if(outp             ) { *outp =  char_alloc(*outp, strlen12(in)); strcpy12(*outp, in); }}
 static inline void astrcpy13 ( char** outp, const lchar* in) { if(outp             ) { *outp =  char_alloc(*outp, strlen3 (in)); strcpy13(*outp, in); }}
-static inline void astrcpy21 (wchar** outp, const  char* in) { if(outp             ) { *outp = mchar_alloc(*outp, strlen21(in)); strcpy21(*outp, in); }}
-static inline void astrcpy22 (wchar** outp, const wchar* in) { if(outp && *outp!=in) { *outp = mchar_alloc(*outp, strlen2 (in)); strcpy22(*outp, in); }}
-static inline void astrcpy23 (wchar** outp, const lchar* in) { if(outp             ) { *outp = mchar_alloc(*outp, strlen3 (in)); strcpy23(*outp, in); }}
+static inline void astrcpy21 (wchar** outp, const  char* in) { if(outp             ) { *outp = wchar_alloc(*outp, strlen21(in)); strcpy21(*outp, in); }}
+static inline void astrcpy22 (wchar** outp, const wchar* in) { if(outp && *outp!=in) { *outp = wchar_alloc(*outp, strlen2 (in)); strcpy22(*outp, in); }}
+static inline void astrcpy23 (wchar** outp, const lchar* in) { if(outp             ) { *outp = wchar_alloc(*outp, strlen3 (in)); strcpy23(*outp, in); }}
 static inline void astrcpy31 (lchar** outp, const  char* in) { if(outp             ) { *outp = lchar_alloc(*outp, strlen1 (in)); strcpy31(*outp, in); }}
 static inline void astrcpy32 (lchar** outp, const wchar* in) { if(outp             ) { *outp = lchar_alloc(*outp, strlen2 (in)); strcpy32(*outp, in); }}
 static inline void astrcpy33 (lchar** outp, const lchar* in) { if(outp && *outp!=in) { *outp = lchar_alloc(*outp, strlen3 (in)); strcpy33(*outp, in); }}
 
-static inline void astrcpy22S (wchar** outp, const wchar* in, long size) { if(outp && *outp!=in) { *outp = mchar_alloc(*outp, size); strcpy22S(*outp, in, size); }}
-static inline void astrcpy23S (wchar** outp, const lchar* in, long size) { if(outp             ) { *outp = mchar_alloc(*outp, size); strcpy23S(*outp, in, size); }}
+static inline void astrcpy22S (wchar** outp, const wchar* in, long size) { if(outp && *outp!=in) { *outp = wchar_alloc(*outp, size); strcpy22S(*outp, in, size); }}
+static inline void astrcpy23S (wchar** outp, const lchar* in, long size) { if(outp             ) { *outp = wchar_alloc(*outp, size); strcpy23S(*outp, in, size); }}
 static inline void astrcpy32S (lchar** outp, const wchar* in, long size) { if(outp             ) { *outp = lchar_alloc(*outp, size); strcpy32S(*outp, in, size); }}
 static inline void astrcpy33S (lchar** outp, const lchar* in, long size) { if(outp && *outp!=in) { *outp = lchar_alloc(*outp, size); strcpy33S(*outp, in, size); }}
 

@@ -22,44 +22,44 @@ void wait() { printf("press enter... "); getchar(); }
 void putc2 (wchar chr) { putwchar(chr); }
 
 
-bool file_to_array (const  char* filename,  char** filecontent_ptr, size_t *contentSize_ptr)
+Array1 FileOpen1 (const  char* filename1, Array1 old1)
 {
-    size_t size;
-    char* filecontent;
+    Array1 content={0};
 
-    FILE* file = fopen (filename, "rb");
-    if(file==NULL) return false;
-
-    fseek (file, 0, SEEK_END);
-    size = ftell (file);
-    fseek (file, 0, SEEK_SET);
-    if(size==0x7FFFFFFF) { fclose(file); return false; }
-
-    if(contentSize_ptr) *contentSize_ptr = size;
-    if(filecontent_ptr)
+    FILE* file = fopen (filename1, "rb");
+    if(file==NULL) content.size = -1;
+    else
     {
-        filecontent = (char*) _realloc (*filecontent_ptr, size+1);
-        *filecontent_ptr = filecontent;
+        fseek(file, 0, SEEK_END);
+        content.size = ftell(file);
+        fseek(file, 0, SEEK_SET);
 
-        if(fread (filecontent, 1, size, file) != size)
+        if(content.size == 0x7FFFFFFF)  // if content size is invalid
+            content.size = -2;
+
+        else if(old1.size != -1) // if allowed to get content data as well
         {
-            _free(filecontent);
-            *filecontent_ptr=NULL;
-            fclose(file);
-            return false;
+            content.data = char_alloc (old1.data, content.size);
+
+            if(fread(content.data, 1, content.size, file) != content.size)
+            {
+                // if failed to read content data
+                char_free(content.data);
+                content.data=NULL;
+            }
+            else content.data[content.size]=0;
         }
-        filecontent[size]=0;
+        fclose(file);
     }
-    fclose(file);
-    return true;
+    return content;
 }
 
 
-bool array_to_file (const char* filename, const char* filecontent, size_t contentSize)
+int FileSave1 (const  char* filename1, const_Array1 content1)
 {
-    FILE* file = fopen(filename, "wb");
+    FILE* file = fopen(filename1, "wb");
     if(file==NULL) return false;
-    fwrite(filecontent, 1, contentSize, file);
+    fwrite(content1.data, 1, content1.size, file);
     fclose(file);
     return true;
 }
@@ -142,14 +142,13 @@ void puts3LC (const lchar* str)
 /*******************************************************************************************/
 
 
-const wchar* get_extension_from_name (wchar* file_extension, const wchar* file_name)
+const wchar* get_extension_from_name (wchar* extension, const wchar* file_name)
 {
-    static wchar extension[10]; // 10 also used below
+    static wchar _extension[10]; // 10 also used below
     size_t i, len;
 
-    if(file_extension==NULL) file_extension = extension;
-    file_extension[0]=0;
-
+    if(extension==NULL) extension = _extension;
+    extension[0]=0;
     if(file_name==NULL) return NULL;
 
     len = strlen2(file_name);
@@ -159,60 +158,58 @@ const wchar* get_extension_from_name (wchar* file_extension, const wchar* file_n
         if(c=='/' || c=='|' || c=='\\') break;
         if(c=='.')
         {   if(len-i <= 10)
-                strcpy22( file_extension, file_name+i);
+                strcpy22(extension, file_name+i);
             break;
         }
     }
-    return file_extension;
+    return extension;
 }
 
 
-const wchar* get_name_from_path_name (wchar* file_name, const wchar* file_path_name)
+const wchar* get_name_from_path_name (wchar* name, const wchar* path_name)
 {
-    static wchar name[MAX_PATH_SIZE];
+    static wchar _name[MAX_PATH_SIZE];
     size_t i, len;
 
-    if(file_name==NULL) file_name = name;
-    file_name[0]=0;
+    if(name==NULL) name = _name;
+    name[0]=0;
+    if(path_name==NULL) return name;
 
-    if(file_path_name==NULL) return NULL;
-
-    len = strlen2(file_path_name);
+    len = strlen2(path_name);
     for(i=len; i>0; i--)
     {
-        wchar c = file_path_name[i-1];
+        wchar c = path_name[i-1];
         if(c=='/' || c=='|' || c=='\\') break;
     }
-    strcpy22( file_name, file_path_name + i);
-    return file_name;
+    strcpy22(name, path_name+i);
+    return name;
 }
 
 
-const wchar* get_path_from_path_name (wchar* file_path, const wchar* file_path_name)
+const wchar* get_path_from_path_name (wchar* path, const wchar* path_name)
 {
-    static wchar path[MAX_PATH_SIZE];
+    static wchar _path[MAX_PATH_SIZE];
     size_t i, len;
 
-    if(file_path==NULL) file_path = path;
-    file_path[0]=0;
+    if(path==NULL) path = _path;
+    path[0]=0;
+    if(path_name==NULL) return NULL;
 
-    if(file_path_name==NULL) return NULL;
-
-    len = strlen2(file_path_name);
+    len = strlen2(path_name);
     for(i=len; i>0; i--)
     {
-        wchar c = file_path_name[i-1];
+        wchar c = path_name[i-1];
         if(c=='/' || c=='|' || c=='\\') break;
     }
-    strcpy22S( file_path, file_path_name, i);
-    return file_path;
+    strcpy22S(path, path_name, i);
+    return path;
 }
 
 
 const wchar* add_path_to_file_name (const wchar* file_path, const wchar* file_name)
 {
-    static wchar fileName[MAX_PATH_SIZE];
-    fileName[0]=0;
+    static wchar path_name[MAX_PATH_SIZE];
+    path_name[0]=0;
     size_t i;
 
     if(file_name==NULL || file_name[0]==0) return NULL;
@@ -224,11 +221,11 @@ const wchar* add_path_to_file_name (const wchar* file_path, const wchar* file_na
         wchar c = file_name[i];
         if(c=='/' || c=='|' || c=='\\') break;
     }
-    if(file_name[i]==0 && file_name[1]!=':') // for Windows' C: or D: or E:
-        strcpy22(fileName, file_path);
+    if(file_name[i]==0 && file_name[1]!=':') // for Windows's C: or D: or ...
+        strcpy22(path_name, file_path);
 
-    strcpy22(fileName+strlen2(fileName), file_name);
-    return fileName;
+    strcat22(path_name, file_name);
+    return path_name;
 }
 
 
@@ -239,108 +236,106 @@ wchar default_file_path[MAX_PATH_SIZE];
 
 
 // to record whether opened file is of 1-byte or 2-bytes character
-static int type = 1; // assume UTF-8 encoding
+static int g_type = 1; // assume UTF-8 encoding
 
-static void docopy (wchar* output, const wchar* input, size_t size)
+static void docopy (wchar* output, const wchar* input, long size)
 {
-    while(size--)
-    {
-        wchar c = *input++;
-        if(type==3) c = (((c&0xFF)<<8) | ((c>>8)&0xFF));
+    while(size-- > 0)
+    {   wchar c = *input++;
+        if(g_type==3) c = (((c&0xFF)<<8) | ((c>>8)&0xFF));
         *output++ = c;
-    }
-    *output = 0;
+    } *output = 0;
 }
 
 
-bool Openfile (const wchar* fileName, wchar** fileContent_ptr, size_t *contentSize_ptr)
+Array2 FileOpen2 (const wchar* filename2, Array2 old2)
 {
-    size_t n=0, size;
+    long n=0;
     unsigned char* str;
-    char* filecontent=NULL;
-    wchar* fileContent;
-    const char* filename;
+    const char* filename1;
+    Array1 content1={0};
+    Array2 content2={0};
 
-    filename = CST12(add_path_to_file_name(NULL, fileName));
-    if(!file_to_array( filename, &filecontent, &size)) return false;
+    filename1 = CST12(add_path_to_file_name(NULL, filename2));
+    if((content1 = FileOpen1(filename1, content1)).size<=0)
+    { content2.size = content1.size; return content2; }
 
-    str = (unsigned char*)filecontent;
-         if(size>=2 && (str[0]==0xFF && str[1]==0xFE)) { type = 2; n = 2; } // check for UTF-16-BOM little-endian
-    else if(size>=2 && (str[0]==0xFE && str[1]==0xFF)) { type = 3; n = 2; } // check for UTF-16-BOM big-endian
-    else if(size>=4 && (str[0]==0x00 || str[2]==0x00)) { type = 3; n = 0; } // if yet a UTF-16 big-endian
-    else if(size>=4 && (str[1]==0x00 || str[3]==0x00)) { type = 2; n = 0; } // if yet a UTF-16 little-endian
+    str = (unsigned char*)content1.data;
+    n = content1.size;
+         if(n>=2 && (str[0]==0xFF && str[1]==0xFE)) { g_type=2; n=2; } // check for UTF-16-BOM little-endian
+    else if(n>=2 && (str[0]==0xFE && str[1]==0xFF)) { g_type=3; n=2; } // check for UTF-16-BOM big-endian
+    else if(n>=4 && (str[0]==0x00 || str[2]==0x00)) { g_type=3; n=0; } // if yet a UTF-16 big-endian
+    else if(n>=4 && (str[1]==0x00 || str[3]==0x00)) { g_type=2; n=0; } // if yet a UTF-16 little-endian
     else
-    {   type = 1; // assume UTF-8 encoding
+    {   g_type = 1; // assume UTF-8 encoding
 
         if(str[0]==0xEF
         && str[1]==0xBB
         && str[2]==0xBF)
-        { str+=3; size-=3; } // skip the BOM of UTF-8
+        { str+=3; content1.size-=3; } // skip the BOM of UTF-8
 
-        if(fileContent_ptr!=NULL)
+        content2.size = strlen21(content1.data); // get content size
+
+        if(old2.size!=-1) // if allowed to get content data as well
         {
-            fileContent = mchar_alloc (*fileContent_ptr, size);
-            *fileContent_ptr = fileContent;
-
-            size = (strcpy21S(fileContent, (char*)str, size) - fileContent);
+            content2.data = wchar_alloc (old2.data, content2.size);
+            strcpy21S(content2.data, (char*)str, content1.size);
         }
     }
-    if(type != 1)
+    if(g_type != 1)
     {
-        if(fileContent_ptr!=NULL)
-        {
-            fileContent = mchar_alloc (*fileContent_ptr, size);
-            *fileContent_ptr = fileContent;
+        str += n; // skip the BOM of UTF-16
+        content1.size -= n;
+        content2.size = content1.size / 2; // get content size
 
-            str += n; // skip the BOM of UTF-16
-            size -= n;
-            size /= 2;
-            docopy(fileContent, (wchar*)str, size);
+        if(old2.size != -1) // if allowed to get content data as well
+        {
+            content2.data = wchar_alloc (old2.data, content2.size);
+            docopy(content2.data, (wchar*)str, content2.size);
         }
     }
-    if(contentSize_ptr!=NULL) *contentSize_ptr = size;
-    _free(filecontent);
-    return true;
+    char_free(content1.data);
+    return content2;
 }
 
 
 
-bool Savefile (const wchar* fileName, const wchar* fileContent, size_t contentSize)
+int FileSave2 (const wchar* filename2, const_Array2 content2)
 {
-    size_t size;
+    const char* filename1;
+    Array1 content1;
     bool success;
-    char *filecontent;
-    const char* filename;
 
-    if(!fileName || !fileContent) return false;
-    if(contentSize==-1) contentSize = strlen2(fileContent);
+    if(!filename2 || !content2.data) return false;
+    if(content2.size==-1) content2.size = strlen2(content2.data);
 
-    if(type==1)
+    if(g_type==1)
     {
-        size = 3*contentSize;
-        filecontent = char_alloc(NULL, size);
-        size = (strcpy12S(filecontent, fileContent, contentSize) - filecontent);
+        content1.size = 3*content2.size;
+        content1.data = char_alloc(NULL, content1.size);
+        strcpy12S(content1.data, content2.data, content2.size);
+        content1.size = strlen1(content1.data);
     }
     else
     {
-        size = 2 + contentSize*sizeof(wchar);
-        filecontent = char_alloc(NULL, size);
+        content1.size = 2 + content2.size*sizeof(wchar);
+        content1.data = char_alloc(NULL, content1.size);
 
-        if(type==2)       // if is little-endian
-        {   filecontent[0] = (char)0xFF;
-            filecontent[1] = (char)0xFE;
+        if(g_type==2)       // if is little-endian
+        {   content1.data[0] = (char)0xFF;
+            content1.data[1] = (char)0xFE;
         }
         else              // else is big-endian
-        {   filecontent[0] = (char)0xFE;
-            filecontent[1] = (char)0xFF;
+        {   content1.data[0] = (char)0xFE;
+            content1.data[1] = (char)0xFF;
         }
-        docopy((wchar*)(filecontent+2), fileContent, contentSize);
+        docopy((wchar*)(content1.data+2), content2.data, content2.size);
     }
 
-    filename = CST12(add_path_to_file_name(NULL, fileName));
-    success = array_to_file( filename, filecontent, size);
+    filename1 = CST12(add_path_to_file_name(NULL, filename2));
+    success = FileSave1(filename1, ConstArray1(content1));
 
-    char_free(filecontent);
+    char_free(content1.data);
     return success;
 }
 

@@ -17,7 +17,7 @@ static inline lchar* lchar_new ()
 /***********************************************************************************************************/
 
 void  char_free ( char*  char_ptr) { if( char_ptr) memory_freed(" char"); _free( char_ptr); }
-void mchar_free (wchar* mchar_ptr) { if(mchar_ptr) memory_freed("wchar"); _free(mchar_ptr); }
+void wchar_free (wchar* wchar_ptr) { if(wchar_ptr) memory_freed("wchar"); _free(wchar_ptr); }
 void lchar_free (lchar* lchar_ptr)
 {
     while(lchar_ptr)
@@ -32,7 +32,7 @@ void lchar_free (lchar* lchar_ptr)
 
 
  char*  char_alloc ( char*  char_ptr, long size) { if(size==0) {  char_free( char_ptr); return NULL; } if(! char_ptr) memory_alloc(" char"); return ( char*) _realloc ( char_ptr, (size+1)*sizeof( char)); }
-wchar* mchar_alloc (wchar* mchar_ptr, long size) { if(size==0) { mchar_free(mchar_ptr); return NULL; } if(!mchar_ptr) memory_alloc("wchar"); return (wchar*) _realloc (mchar_ptr, (size+1)*sizeof(wchar)); }
+wchar* wchar_alloc (wchar* wchar_ptr, long size) { if(size==0) { wchar_free(wchar_ptr); return NULL; } if(!wchar_ptr) memory_alloc("wchar"); return (wchar*) _realloc (wchar_ptr, (size+1)*sizeof(wchar)); }
 lchar* lchar_alloc (lchar* lchar_ptr, long size)
 {
     lchar *lchr1, *lchr2;
@@ -74,8 +74,8 @@ void CST_clean()
 {
      char_free(str12); str12=NULL; size12=0;
      char_free(str13); str13=NULL; size13=0;
-    mchar_free(str21); str21=NULL; size21=0;
-    mchar_free(str23); str23=NULL; size23=0;
+    wchar_free(str21); str21=NULL; size21=0;
+    wchar_free(str23); str23=NULL; size23=0;
     lchar_free(str31); str31=NULL; size31=0;
     lchar_free(str32); str32=NULL; size32=0;
 }
@@ -92,8 +92,8 @@ void CST_clean()
 }
 const  char* CST12 (const wchar* input) CST (str12, size12,  char_alloc, strlen12, strcpy12)
 const  char* CST13 (const lchar* input) CST (str13, size13,  char_alloc, strlen3 , strcpy13)
-const wchar* CST21 (const  char* input) CST (str21, size21, mchar_alloc, strlen21, strcpy21)
-const wchar* CST23 (const lchar* input) CST (str23, size23, mchar_alloc, strlen3 , strcpy23)
+const wchar* CST21 (const  char* input) CST (str21, size21, wchar_alloc, strlen21, strcpy21)
+const wchar* CST23 (const lchar* input) CST (str23, size23, wchar_alloc, strlen3 , strcpy23)
 const lchar* CST31 (const  char* input) CST (str31, size31, lchar_alloc, strlen1 , strcpy31)
 const lchar* CST32 (const wchar* input) CST (str32, size32, lchar_alloc, strlen2 , strcpy32)
 

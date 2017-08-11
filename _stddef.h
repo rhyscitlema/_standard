@@ -83,4 +83,14 @@ typedef struct _value
 } value;
 
 
+typedef struct {  char* data; long size; } Array1;
+typedef struct { wchar* data; long size; } Array2;
+typedef struct { const  char* data; long size; } const_Array1;
+typedef struct { const wchar* data; long size; } const_Array2;
+static inline const_Array1 ConstArray1(Array1 in)
+{ const_Array1 out={in.data, in.size}; return out; }
+static inline const_Array2 ConstArray2(Array2 in)
+{ const_Array2 out={in.data, in.size}; return out; }
+
+
 #endif

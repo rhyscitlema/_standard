@@ -40,7 +40,6 @@ extern long getFragmentsCount ();
    memory_print() will then print the statistics (or counts).
    This helps to keep track of memory allocations.
 */
-
 #ifdef DEBUG
 extern void memory_alloc (const char* name);
 extern void memory_freed (const char* name);
