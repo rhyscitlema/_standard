@@ -34,7 +34,7 @@ void* _realloc (void* old, long size, const char* type)
 	What should the user do if memory cannot be allocated? Especially
 	for _realloc() where the originally allocated memory is even freed!
 
-	Copyright (c) 2014, Rhyscitlema <info@rhyscitlema.com>.
+	Copyright (c) 2012-2019, Rhyscitlema <info@rhyscitlema.com>.
 */
 
 #include "_stddef.h"
