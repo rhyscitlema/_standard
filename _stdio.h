@@ -6,43 +6,51 @@
 
 #include "_stddef.h"
 
-#define MAX_PATH_SIZE 300 /* = maximum filename size */
+#define MAX_NAME_LEN  255 /* = maximum size of file name */
+#define MAX_PATH_LEN 4095 /* = maximum size of file path */
 
 
 void wait(); /* wait for user to press Enter on command-line-interface */
 
 /* these 2 are explicitly provided by the platform-dependent code */
-void wait_for_user_first   (const wchar* title, const wchar* message);
-bool wait_for_confirmation (const wchar* title, const wchar* message);
+void wait_for_user_first   (const_Str2 title, const_Str2 message);
+bool wait_for_confirmation (const_Str2 title, const_Str2 message);
 
 
-/* put character in default standard output */
+/* print character to default standard output */
 void putc2 (wchar chr);
 
 /* put string using calls to putc2(chr) */
-void puts1 (const  char* str);
-void puts2 (const wchar* str);
-void puts3 (const lchar* str);
-void puts2S (const wchar* str, size_t length);
-void puts3LC (const lchar* str);
+void puts1 (const_Str1 s);
+void puts2 (const_Str2 s);
+void puts3 (const_Str3 s);
+void puts3LC (const_Str3 s);
 
 
-const wchar* get_extension_from_name (wchar* extension, const wchar* file_name);
-const wchar* get_name_from_path_name (wchar* name, const wchar* path_name);
-const wchar* get_path_from_path_name (wchar* path, const wchar* path_name);
-const wchar* add_path_to_file_name (const wchar* file_path, const wchar* file_name);
-extern wchar default_file_path[];
+/* return beginning of result string */
+const_Str2 get_extension_from_name (const_Str2 filename);
+const_Str2 get_name_from_path_name (const_Str2 pathname);
+const_Str2 get_path_from_path_name (const_Str2 pathname, Str2 out);
+const_Str2 add_path_to_file_name   (const_Str2 filename, Str2 out);
+extern Str2 default_file_path();
 
 
-/* Important: 'old' must be set to = {0} if very first time */
-Array1 FileOpen1 (const  char* filename1, Array1 old1);
-Array2 FileOpen2 (const wchar* filename2, Array2 old2);
+/* On success, return file content as VT_ARRRAY
+   On failure, return error message as VT_MESSAGE
+*/
+value FileOpen1 (const_Str1 filename, value stack);
+value FileOpen2 (const_Str2 filename, value stack);
 
-int FileSave1 (const  char* filename1, const_Array1 content1);
-int FileSave2 (const wchar* filename2, const_Array2 content2);
 
-bool file_is_modified (const wchar* fileName);
+/* File content to save = y = vPrev(stack)
+   On success, return setBool(y, true)
+   On failure, return setError(y, message)
+*/
+value FileSave1 (const_Str1 filename, value stack);
+value FileSave2 (const_Str2 filename, value stack);
 
+
+bool file_modified (const_Str2 filename);
 
 #endif
 

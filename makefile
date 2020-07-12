@@ -23,7 +23,7 @@ CC = gcc
 AR = ar
 
 # compiler flags
-CC_FLAGS = -Wall -pedantic $(CFLAGS)
+CC_FLAGS = -Wall -std=c99 -pedantic $(CFLAGS)
 
 # archiver flags
 AR_FLAGS = -crs #$(ARFLAGS)
@@ -37,7 +37,11 @@ $(OUTPUT_FILE): $(OBJECT_FILES)
 
 # remove all created files
 clean:
-	$(RM) *.o *.a
+	$(RM) *.o *.a test
+
+test: *.c *.h
+	$(MAKE) CFLAGS+="-g -DDEBUG -DCOMPLEX"
+	$(CC) $(CC_FLAGS) -g test.c -o test $(OUTPUT_FILE) -lm
 
 #-------------------------------------------------
 

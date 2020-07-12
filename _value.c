@@ -2,318 +2,319 @@
     value.c
 */
 
-#include "_value.h"
+#include "_math.h"
+#include "_texts.h"
 #include "_string.h"
 #include "_malloc.h"
-#include "_math.h"
 
 
-//---------------------------------------------------------------
-
-value* value_alloc (long size)
+long vSize (const_value v)
 {
-    memory_alloc("value");
-    return (value*)_malloc((size)*sizeof(value));
-}
-
-void value_free (value* vst)
-{
-    if(!vst) return;
-    value *v, *end = vst + VST_LEN(vst);
-    for(v=vst; v!=end; v++)
+    if(!v) return 0;
+    uint32_t a = *v;
+    switch(a>>28)
     {
-        switch(getType(*v))
-        {
-            case aString: lchar_free(getString(*v)); break;
-            default: break;
-        }
-    }
-    //if(!avl_do(AVL_DEL, &allocated, &vst, sizeof(vst), avl_compare))
-    //{ printf("Software Error in value_free(): pointer=%p does not exists.\n", vst); wait(); }
-    /*int i = *((int*)vst-1);
-    *(int**)vst = freevst[i];
-    freevst[i] = (int*)vst;*/
-    _free(vst);
-    memory_freed("value");
-}
+        case VAL_MESSAGE: return a ? 1+(a & 0xFFFF) : 0;
+        case VAL_OPERAT: return 1+(a & 0xFFFF);
 
-void vst_copy (value* out, const value* in, long len)
-{
-    // note: len == VST_LEN(in)
-    lchar *lou, *lin;
-    for( ; len--; in++, out++)
-    {
-        switch(getType(*in))
-        {
-        case aString:
-            lou = NULL;
-            lin = getString(*in);
-            astrcpy33(&lou, lin);
-            *out = setString(lou);
-            break;
-        default: *out = *in; break;
-        }
+        case VAL_OFFSET: assert((a>>28)!=VAL_OFFSET); return 0;
+      //case VAL_OFFSAT: assert((a>>28)!=VAL_OFFSAT); return 0;
+        case VAL_POINTER: assert(!(a & 0x08000000)); return 3;
+
+        case VAL_CHARAC: return 1;
+        case VAL_ENUMER: return 1;
+      //case VAL_STRUCT: return 1+(a & 0xFFFF);
+
+        case VAL_INTFLT:
+        case VAL_NUMBER: return 1+(a & 0x0FFFFFFF);
+
+      //case VAL_DATA:
+        case VAL_VECTOR: return 2+v[1];
+
+        case VAL_ARRRAY: { v++; // skip to element ValueType
+            uint32_t b = *v;
+            assert((b>>28)==VAL_CHARAC); // TODO: for now strings are the only arrays.
+            a &= 0x0FFFFFFF; // get number of array elements
+            if((b>>28)==VAL_ENUMER)
+            {
+                b = ((b>>16)&0x0FFF); // get 12-bit type
+                 if(b==0) a = (a+31)/32; // if array of 1-bit boolean
+            else if(b==1) a = (a+3)/4;   // if array of 8-bit UTF8 char
+            else a = (a+1)/2; // else if any other enumeration value = 16-bit
+            }
+            else if((b>>28)==VAL_CHARAC
+                 && sizeof(wchar_t)==2) a = (a+1)/2;
+            else a *= vSize(v);
+            return 2+a; }
+
+        default: assert(false); return 0;
     }
 }
 
-//---------------------------------------------------------------
 
-const char* vst_to_str (const value* vst)
+value vcopy (value out, const_value n)
 {
-    static char tstr[100];
-    static char _str[1000];
-    char* str = _str;
-    long i, len;
-    value v;
-    int j;
+    if(out){
+        if(n){
+            uint32_t size = vSize(n);
+            memmove(out, n, size*sizeof(*n));
+            out = setOffset(out+size, size);
+        } else *out++ = 0;
+    }return out;
+}
 
-    str[0]=0;
-    if(vst==NULL) return _str;
-    len = VST_LEN(vst);
+value vpcopy (value out, value v)
+{ return vcopy(out, vGetPrev(v)); }
 
-    for(i=0; i<len; i++)
+
+value tovector (value v, uint32_t count)
+{
+    assert(count>=2);
+    if(VERROR(v)) return v;
+    if(count==1) return v;
+    if(count==0) { setVector(v,0,0); return setOffset(v+2,2); }
+
+    uint32_t i, s, *n, *y, *t;
+    for(i=0; i<count; i++) { assert(v==vnext(vPrev(v))); v = vPrev(v); }
+    y = n = v;
+    for(i=0; i<count; i++)
     {
-        v = *vst;
-        j = getType(v);
-        switch((int)j)
-        {
-        case aPoiter: str += sprintf(str, "ptr(%d,%p)", j, (void*)getPoiter(v)); break;
-        case aSeptor: str += sprintf(str, "sep(%d,%ld,%ld)", j, getSeptor(v).len, getSeptor(v).cols); break;
-        case aString: strcpy13(tstr, getString(v)); str += sprintf(str, "t(%d,%s)", j, tstr); break;
-        case aSmaInt: str += sprintf(str, "si(%d,%ld)", j, (long)getSmaInt(v)); break;
-        case aSmaRat: str += sprintf(str, "sr(%d,%ld/%ld)", j, (long)getSmaRat(v).nume, (long)getSmaRat(v).deno); break;
-        case aSmaFlt: str += sprintf(str, "sf(%d,%lf)", j, getSmaFlt(v)); break;
-        case aSmaCom: str += sprintf(str, "sc(%d,~)", j); break;
-        default:      str += sprintf(str, "Type=%d", j); break;
-        }
-        vst++;
+        t = vnext(n);
+        s = vSize(n);
+        memmove(y, n, s*sizeof(*n));
+        n = t;
+        y += s;
     }
-    return _str;
+    i = y - v;
+    memmove(v+2, v, i*sizeof(*n));
+    setVector(v, count, i);
+    return setOffset(2+y, 2+i);
 }
 
 
-
-int valueSt_compare (const value* in1, const value* in2)
+static value onSetMsg (value v, int code, int argc, Str2 out, Str2 end)
 {
-    int r=0;
-    long i1=0, i2=0, len1, len2;
-    char v1, v2;
+    if(argc) assert(*out && *end=='\0');
+    long size = argc ? (end-out)+1 : 0;
+    if(sizeof(wchar_t)==2) size = (size+1)/2;
+    assert(!(code & ~0x0FFF) && !(size & ~0xFFFF));
+    *v = (VAL_MESSAGE<<28) | (code<<16) | size;
+    return setOffset(v+1+size, 1+size);
+}
 
-    len1 = VST_LEN(in1);
-    len2 = VST_LEN(in2);
+value setMessage (value v, int code, int argc, const_Str2* argv)
+{
+    if(!v) return v;
+    Str2 out = (wchar*)(v+1);
+    Str2 end = sprintf2(out, argc, argv);
+    return onSetMsg(v, code, argc, out, end);
+}
 
-    while(1)
-    {
-        if(i1==len1)
-        { if(i2!=len2) r=7; break;
-        } if(i2==len2) { r=7; break; }
+value setMessageE (value v, int code, int argc, const_Str2* argv, const_Str3 str)
+{
+    if(!v) return v;
+    Str2 out = (wchar*)(v+1);
+    Str2 end = set_message(out, argc, argv, str);
+    return onSetMsg(v, code, argc, out, end);
+}
 
-        v1 = getType(*in1);
-        v2 = getType(*in2);
-
-        if(v1==v2)
-        {
-            i1+=1; in1+=1;
-            i2+=1; in2+=1;
-        }
-        else if(v1==aSeptor)
-        {
-            i1+=VST_LEN(in1); in1+=VST_LEN(in1);
-            i2+=1;   r|=1;    in2+=1;
-        }
-        else if(v2==aSeptor)
-        {
-            i1+=1;   r|=2;    in1+=1;
-            i2+=VST_LEN(in2); in2+=VST_LEN(in2);
-        }
-        else
-        {
-            i1+=1; in1+=1;
-            i2+=1; in2+=1;
-        }
+const_Str2 getMessage (const_value v)
+{
+    const_Str2 s=NULL;
+    uint32_t a = v ? *v : 0;
+    assert((a>>28)==VAL_MESSAGE);
+    if(!a);
+    else if(a & 0xFFFF)
+        s = (wchar*)(v+1);
+    else {
+        a = (a>>16) & 0x0FFF;
+        if(a==0) s = L"Unknown error.";
+        else if(IS_TWST_ID(a))
+            s = TWST(a);
+        else assert(IS_TWST_ID(a));
     }
-    return r;
+    assert(!s || *s);
+    return s;
 }
 
 
-
-int value_compare (const value* in1, const value* in2)
+value onSetStr1 (value v, const_Str1 end)
 {
-    long i, j, size;
-    char v1, v2;
+    assert(*end=='\0');
+    long size = end - (Str1)(v+2) + 1; // +1 to include '\0'
+    v[0] = (VAL_ARRRAY<<28) | size;
+    v[1] = (VAL_ENUMER<<28) | 0x10000;
+    size = (size+3)/4;
+    return setOffset(v+2+size, 2+size);
+}
 
-    i = VST_LEN(in1);
-    j = VST_LEN(in2);
-    if(i<j) return -1;
-    if(i>j) return +1;
-    size=i;
+value onSetStr2 (value v, const_Str2 end)
+{
+    assert(*end=='\0');
+    long size = end - (Str2)(v+2) + 1; // +1 to include '\0'
+    v[0] = (VAL_ARRRAY<<28) | size;
+    v[1] = (VAL_CHARAC<<28);
+    if(sizeof(wchar_t)==2) size = (size+1)/2;
+    return setOffset(v+2+size, 2+size);
+}
 
-    for(i=0; i<size; i++)
+value setStr21 (value v, const_Str1 in) { return onSetStr2(v, strcpy21((Str2)(v+2), in)); }
+value setStr22 (value v, const_Str2 in) { return onSetStr2(v, strcpy22((Str2)(v+2), in)); }
+value setStr23 (value v, const_Str3 in) { return onSetStr2(v, strcpy23((Str2)(v+2), in)); }
+
+
+value value_alloc (value old, long size)
+{
+    void* ptr = _realloc(old, size*sizeof(*old), "value");
+    return (ptr || !size) ? (value)ptr : old;
+}
+
+value check_arguments (value v, uint32_t c, uint32_t count)
+{
+    c = ((c>>28)==VAL_VECTOR) ? (c & 0x0FFFFFFF) : 1;
+    if(c!=count) // if error
     {
-        v1 = getType(*in1);
-        v2 = getType(*in2);
-        while(1) // not a loop
-        {
-            if(v1==aSeptor)
-            { if(v2==aSeptor) break;
-              else return -1;
-            } if(v2==aSeptor) return +1;
-
-            if(v1==aString)
-            { if(v2==aString)
-              {
-                j = strcmp33 (getString(*in1), getString(*in2));
-                if(j==0) break; else return (int)j;
-              }
-              else return -1;
-            } if(v2==aString) return +1;
-
-            if(!getSmaInt(equalTo(*in1, *in2))) return -1;
-
-        break;
-        }
-        in1+=1;
-        in2+=1;
+        const_Str2 argv[4];
+        argv[0] = L"Expected %s argument%s not %s.";
+        argv[1] = TIS2(0, count);
+        argv[2] = count>2 ? L"s" : L"";
+        argv[3] = TIS2(1, c);
+        v = setMessage(v, 0, 4, argv);
     }
-    return 0;
+    else v=NULL;
+    return v;
 }
 
 
-
-bool valueSt_matrix_getSize (const value* vst, int *rows, int *cols)
+#include "_stdio.h"
+value ToValue (value out, int rows, int cols, const void* in, bool setInt)
 {
-    int i, j, r, c;
-    if(!vst) return false;
+    int i, j, vS = (setInt ? 2 : 3);
+    size_t eS = setInt ? sizeof(SmaInt) : sizeof(SmaFlt);
 
-    r = VST_LEN(vst);
-    if(r==0 || r==1) { *rows=r; *cols=r; return true; }
+    const char* n = (const char*)in;
+    bool b = n!=NULL;
+    value v=out;
 
-    r--; // skip Septor
-    vst++;
-    c = VST_LEN(vst);
-    if(r%c) return false;
-    r /= c;
-    j = r;
+    if(cols==1)
+    {
+        if(rows!=1) v+=2;
+        for(i=0; i<rows; i++)
+        {
+            *v++ = (VAL_INTFLT<<28) | vS;
+            if(b) memcpy(v, n, eS);
+            else  memset(v, 0, eS);
+            v += vS;
+            n += eS;
+        }
+        if(rows!=1) setVector(out, rows, v-out-2);
+    }
+    else
+    {
+        v+=2;
+        for(i=0; i<rows; i++)
+        {
+            value w=v;
+            v+=2;
+            for(j=0; j<cols; j++)
+            {
+                *v++ = (VAL_INTFLT<<28) | vS;
+                if(b) memcpy(v, n, eS);
+                else  memset(v, 0, eS);
+                v += vS;
+                n += eS;
+            }
+            setVector(w, cols, v-w-2);
+        }
+        setVector(out, rows, v-out-2);
+    }
+    return setOffset(v, v-out);
+}
 
-    // check if a valid vector or matrix
-    if(c==1) { j--;        { i=j; vst++; while(i--) { if(isSeptor(*vst)) return false; vst++; } } }
-    else { c--; while(j--) { i=c; vst++; while(i--) { if(isSeptor(*vst)) return false; vst++; } } }
+value integToValue (value out, int rows, int cols, const SmaInt* in) { return ToValue(out, rows, cols, in, 1); }
+value floatToValue (value out, int rows, int cols, const SmaFlt* in) { return ToValue(out, rows, cols, in, 0); }
 
-    *rows = r;
-    *cols = c;
+
+static void onFail (value v, int rows, int cols, const char* name)
+{
+    if(name==NULL) name = "result";
+    value stack = v;
+
+    const_Str2 argv[4];
+    if(rows==1 && cols==1)
+         argv[0] = L"Error: %s must evaluate to a single value.";
+    else argv[0] = L"Error: %s must evaluate to a (%s by %s) matrix.";
+
+    v = setStr21(v, name);
+    argv[1] = getStr2(vGetPrev(v));
+
+    argv[2] = (Str2)v; v+=64; intToStr((Str2)v, rows);
+    argv[3] = (Str2)v; v+=64; intToStr((Str2)v, cols);
+
+    vpcopy(stack, setMessage(v, 0, 4, argv));
+}
+
+static bool FromValue (value v, int rows, int cols,  void* out, bool getInt, const char* name)
+{
+    value y = vPrev(v);
+    const_value n = vGet(y);
+    if(!value_type(n)) return v;
+    int i, j;
+    const_value t;
+    SmaFlt* outF = (SmaFlt*)out;
+    int   * outI = (int   *)out;
+
+    _size(setRef(v, n));
+    t = v+2; // +2 to skip vector header
+    i = getSmaInt(t);
+    t = vNext(t);
+    j = getSmaInt(t);
+
+    if(i!=rows || j!=cols)
+    {   onFail(y, rows, cols, name);
+        return false;
+    }
+    if(!out) return true;
+
+    if(rows!=1 || cols!=1) n += 2; // skip vector header
+    for(i=0; i<rows; i++)
+    {
+        t = vGet(n);
+        if(cols!=1) t += 2; // skip vector header
+        for(j=0; j<cols; j++)
+        {
+            if(getInt)
+            {
+                _floor(setRef(v, vGet(t)));
+                if(value_type(v)!=aSmaInt)
+                     *outI++ = 0;
+                else *outI++ = (int)getSmaInt(v);
+            }
+            else // if(getFloat)
+            {
+                toFlt(setRef(v, vGet(t)));
+                if(value_type(v)!=aSmaFlt)
+                     *outF++ = 0;
+                else *outF++ = getSmaFlt(v);
+            }
+            t = vNext(t);
+        }
+        n = vNext(n);
+    }
     return true;
 }
 
+bool integFromValue (value v, int rows, int cols,  int  * out, const char* name) { return FromValue(v, rows, cols, out, 1, name); }
+bool floatFromValue (value v, int rows, int cols, SmaFlt* out, const char* name) { return FromValue(v, rows, cols, out, 0, name); }
 
 
-void valueSt_matrix_setSize (value* vst, int rows, int cols)
+static uint32_t memory[100];
+
+const_value VSTXX (int rows, int cols)
 {
-    int i;
-    value* A;
-    long colslen;
-    if(rows==1 && cols==1) return;
-
-    colslen = (cols==1) ? 1 : (1+cols);
-    *vst = setSepto2(1+rows*colslen, rows);
-
-    if(cols!=1)
-    {
-        for(i=0; i < rows; i++)
-        {
-            A = MVE(vst,i,cols);
-            *A = setSepto2(colslen, cols);
-        }
-    }
-}
-
-
-
-void valueSt_from_floats (value* vst, int rows, int cols, const SmaFlt* floats)
-{
-    int i, j;
-    valueSt_matrix_setSize (vst, rows, cols);
-
-    if(rows==1 && cols==1) { *vst = setSmaFlt(floats[0]); }
-    else
-    {
-        for(i=0; i<rows; i++)
-        for(j=0; j<cols; j++)
-        {
-            value v = setSmaFlt(floats[i*cols+j]);
-            MVA(vst,i,j,cols) = v;
-        }
-    }
-}
-
-
-
-bool valueSt_get_position (int* position, const value* vst, const lchar* lstr)
-{
-    int j, index[20];
-    const value* end[20];
-    if(vst==NULL) return false;
-    j=0;
-    while(1)
-    {
-        if(isString(*vst)) // if leave node is reached
-        {
-            if(0==strcmp33(lstr, getString(*vst)))
-            {
-                index[0] = j;
-                memcpy(position, index, sizeof(index));
-                return true;
-            }
-
-            vst++;
-            while(1)
-            {
-                if(j==0) break;
-                if(vst==end[j]) j--;
-                else { index[j]++; break; }
-            }
-            if(j==0) break;
-        }
-        else // if not leave node
-        {
-            ++j;  index[j] = 0;
-            end[j] = vst + VST_LEN(vst);
-            vst++;
-        }
-    }
-    return false;
-}
-
-
-
-const value *VST11=0,
-            *VST21,
-            *VST31,
-            *VST41,
-            *VST61,
-            *VST33;
-void SET_VSTXX ()
-{
-    static value _VST11[0+1];
-    static value _VST21[1+2];
-    static value _VST31[1+3];
-    static value _VST41[1+4];
-    static value _VST61[1+6];
-    static value _VST33[1+3*(1+3)];
-    SmaFlt v[10] = {0};
-
-    if(VST11) return;
-    VST11 = _VST11;
-    VST21 = _VST21;
-    VST31 = _VST31;
-    VST41 = _VST41;
-    VST61 = _VST61;
-    VST33 = _VST33;
-
-    valueSt_from_floats (_VST11, 1, 1, v);
-    valueSt_from_floats (_VST21, 2, 1, v);
-    valueSt_from_floats (_VST31, 3, 1, v);
-    valueSt_from_floats (_VST41, 4, 1, v);
-    valueSt_from_floats (_VST61, 6, 1, v);
-    valueSt_from_floats (_VST33, 3, 3, v);
+    int size = (cols==1) ? (rows==1) ? 3 : (2+rows*3) : (2+rows*(2+cols*3));
+    if(size+1 >= SIZEOF(memory)) { assert(false); return NULL; }
+    integToValue(memory, rows, cols, NULL);
+    return memory;
 }
 

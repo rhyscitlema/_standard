@@ -6,120 +6,266 @@
 
 #include "_stddef.h"
 
-// mix value types, used by switch statements
-#define MIX(n,m) (((n)<<8)+(m))
+#define vGetPrev(v) vGet(vPrev(v))
 
-static inline enum ValueType getType(value v) { return v.type; }
+#define VERROR(v) ((*vGetPrev(v)>>28)==VAL_MESSAGE)
 
-static inline Notval getNotval(value v) { return v.msg; }
-static inline Poiter getPoiter(value v) { return v.ptr; }
-static inline Septor getSeptor(value v) { return v.sep; }
-static inline String getString(value v) { return v.str; }
-static inline SmaInt getSmaInt(value v) { return v.si; }
-static inline SmaRat getSmaRat(value v) { return v.sr; }
-static inline SmaFlt getSmaFlt(value v) { return v.sf; }
+#define VEC_LEN(a) ((a) & 0x07FFFFFF)
 
-static inline value setNotval(Notval msg) { value v; v.type = aNotval; v.msg = msg; return v; }
-static inline value setPoiter(Poiter ptr) { value v; v.type = aPoiter; v.ptr = ptr; return v; }
-static inline value setSeptor(Septor sep) { value v; v.type = aSeptor; v.sep = sep; return v; }
-static inline value setString(String str) { value v; v.type = aString; v.str = str; return v; }
-static inline value setSmaInt(SmaInt si ) { value v; v.type = aSmaInt; v.si  = si ; return v; }
-static inline value setSmaRat(SmaRat sr ) { value v; v.type = aSmaRat; v.sr  = sr ; return v; }
-static inline value setSmaFlt(SmaFlt sf ) { value v; v.type = aSmaFlt; v.sf  = sf ; return v; }
+#define WCHAR(v) ((wchar*)(uintptr_t)(v))
 
-static inline value setSepto2(long len, long cols) { value v; v.type = aSeptor; v.sep.len = len; v.sep.cols = cols; return v; }
-static inline value setSmaRa2(SmaInt nume, SmaInt deno) { value v; v.type = aSmaRat; v.sr.nume = nume; v.sr.deno = deno; return v; }
-extern value setSmaCo2(SmaFlt Re, SmaFlt Im);
+#define vDebug(v,n,i) puts2(getStr2(vGet(vPrev(VstToStr(setRef(v,n),i,-1,-1)))))
 
-static inline bool IsSmaInt(enum ValueType t) { return (t==aSmaInt); }
-static inline bool IsSmaRat(enum ValueType t) { return (t==aSmaRat || IsSmaInt(t)); }
-static inline bool IsSmaFlt(enum ValueType t) { return (t==aSmaFlt || IsSmaRat(t)); }
-static inline bool IsSmaCom(enum ValueType t) { return (t==aSmaCom || IsSmaFlt(t)); }
-static inline bool IsBigInt(enum ValueType t) { return (t==aBigInt || IsSmaInt(t)); }
-static inline bool IsBigRat(enum ValueType t) { return (t==aBigRat || IsSmaRat(t) || IsBigInt(t)); }
-static inline bool IsBigFlt(enum ValueType t) { return (t==aBigFlt || IsSmaFlt(t) || IsBigRat(t)); }
-static inline bool IsBigCom(enum ValueType t) { return (t==aBigCom || IsSmaCom(t) || IsBigFlt(t)); }
-static inline bool IsNumber(enum ValueType t) { return (t==aNumber || IsBigCom(t)); }
 
-#define isPoiter(val) (getType(val)==aPoiter)
-#define isSeptor(val) (getType(val)==aSeptor)
-#define isString(val) (getType(val)==aString)
-#define isSmaInt(val) (getType(val)==aSmaInt) // TODO: remove these
+long vSize (const_value n);
+value vcopy (value out, const_value n);
+value vpcopy (value out, value v);
 
-/* count number of total values in value structure */
-static inline long VST_LEN(const value* vst)
+static inline enum ValueType value_type (const_value n)
 {
-    enum ValueType type;
-    value v;
-    if(!vst) return 0;
-    v = *vst;
-    type = getType(v);
-    return type==0 ? 0 :
-           type!=aSeptor ? 1 :
-           getSeptor(v).len ;
+    assert(n!=NULL); // keep this
+    if(!n) return 0;
+    uint32_t a = *n;
+    enum ValueType type = a >> 28;
+    switch(type)
+    {
+        case VAL_CHARAC:
+        case VAL_ENUMER: type = aSmaInt; break;
+
+        case VAL_INTFLT:
+            a &= 0x0FFFFFFF;
+            if(a==2) type = aSmaInt;
+            if(a==3) type = aSmaFlt;
+            break;
+
+        case VAL_NUMBER:
+            a &= 0x0FFFFFFF;
+            if(a==4) type = aSmaRat;
+            if(a==6) type = aSmaCom;
+            break;
+
+        case VAL_ARRRAY:
+            if((n[1]>>28)==VAL_CHARAC)
+                type = aString;
+            break;
+
+        default: break;
+    }
+    return type;
 }
 
 
-value* value_alloc (long size);
-void value_free (value* vst);
-
-void vst_copy (value* out, const value* in, long len);
-
-static inline value* value_copy (const value* in)
-{   long len;
-    value* out;
-    if(!in) return NULL;
-    len = VST_LEN(in);
-    out = value_alloc(len);
-    vst_copy(out, in, len);
-    return out;
+static inline SmaInt getSmaInt (const_value v)
+{
+    assert(v!=NULL);
+    uint32_t a = v[0];
+    if((a>>28)==VAL_CHARAC) return (a & 0x0FFFFFFF);
+    if((a>>28)==VAL_ENUMER) return (a & 0x0000FFFF);
+    return ((SmaInt)v[1] << 32) | v[2];
 }
-
-static inline void avaluecpy (value** out, const value* in)
-{ if(out) { value_free(*out); *out = value_copy(in); } }
-
-static inline void vst_shift (register value* out, register const value* in)
-{   register const value* end = in + VST_LEN(in);
-    while(in!=end) *out++ = *in++;
+static inline value setSmaInt (value v, register SmaInt si)
+{
+    assert(v!=NULL);
+    *v++ = (VAL_INTFLT<<28) | 2;
+    *v++ = (uint32_t)(si >> 32);
+    *v++ = (uint32_t)(si);
+    *v++ = (VAL_OFFSET<<28) | 3;
+    return v;
 }
 
 
-const char* vst_to_str (const value* vst);
+union SmaFltIs64b{
+    uint64_t n;
+    SmaFlt sf;
+};
+static inline SmaFlt getSmaFlt (const_value v)
+{
+    register union SmaFltIs64b n;
+    n.n = ((uint64_t)v[1] << 32) | v[2];
+    return n.sf;
+}
+static inline value setSmaFlt (value v, SmaFlt sf)
+{
+    assert(v!=NULL);
+    assert(sizeof(uint64_t)==sizeof(SmaFlt));
+    register union SmaFltIs64b n;
+    n.sf = sf;
+    *v++ = (VAL_INTFLT<<28) | 3;
+    *v++ = (uint32_t)(n.n >> 32);
+    *v++ = (uint32_t)(n.n);
+    *v++ = 0;
+    *v++ = (VAL_OFFSET<<28) | 4;
+    return v;
+}
 
-int value_compare (const value* in1, const value* in2);
+
+static inline value setOffset(value v, long  off) { if(v) *v++ = (VAL_OFFSET<<28) | (off & 0x0FFFFFFF); return v; }
+static inline value setCharac(value v, wchar chr) { if(v) *v++ = (VAL_CHARAC<<28) | (chr & 0x0FFFFFFF); return setOffset(v,1); }
+static inline value setBool  (value v, bool  val) { if(v) *v++ = (VAL_ENUMER<<28) | (val             ); return setOffset(v,1); }
+
+static inline void setVector (value y, uint32_t rows, uint32_t size)
+{ if(y) { y[0] = (VAL_VECTOR<<28) | (rows & 0x0FFFFFFF); y[1] = size; } }
+
+static inline value setEmptyVector (value y) { setVector(y, 0, 0); return setOffset(y+2, 2); }
 
 
-/* valueSt_compare() =
- * 00b if in1 == in2 // one-to-one
- * 01b if in1 >  in2 // many-to-one
- * 10b if in1 <  in2 // one-to-many
- * 11b if in1 <> in2 // many-to-many
- *111b if in1 != in2 // no matching
- */
-int valueSt_compare (const value* in1, const value* in2);
+static inline value vPrev (value v)
+{
+    if(v){
+        uint32_t a = *--v; // note the --v
+        if((a>>28)==VAL_OFFSET){
+            v -= (a & 0x0FFFFFFF);
+            assert(a & 0x0FFFFFFF);
+            assert((*v>>28)!=VAL_OFFSET); // TODO: on vPrev(): remove this line
+        }
+        else assert((a>>28)==VAL_POINTER && (a&0x08000000));
+    }return v;
+}
 
-bool valueSt_matrix_getSize (const value* vst, int *rows, int *cols);
-void valueSt_matrix_setSize (value* vst, int rows, int cols);
-void valueSt_from_floats (value* vst, int rows, int cols, const SmaFlt* floats);
+static inline const_value vNext (const_value v)
+{
+    if(v){
+        uint32_t a = *v;
+        if((a>>28)==VAL_OFFSET){
+            v += (a & 0x0FFFFFFF);
+            assert(a & 0x0FFFFFFF);
+        }
+        v += vSize(v);
+    }return v;
+}
+#define vNEXT(v) ((value)(uintptr_t)vNext(v))
+
+static inline value vnext (value v)
+{
+    if(v){
+        v = vNEXT(v);
+        assert((*v>>28)==VAL_OFFSET);
+        v++; // skip the VAL_OFFSET
+    }
+    return v;
+}
+#define unOffset(v) (v-1) // skip the VAL_OFFSET
 
 
-#define MVE(A,i,cols) ( A+1 + (i)*((cols==1) ? 1 : (1+cols)) )
+static inline const_value vGet (const_value v)
+{
+    if(v){
+        while(true){
+            uint32_t a = *v;
+            if((a>>28)==VAL_OFFSET){
+                v += (a & 0x0FFFFFFF);
+                assert(a & 0x0FFFFFFF);
+            }
+            else if((a>>28)==VAL_POINTER)
+            {
+                if(a & 0x08000000)
+                {   v -= (a & 0x07FFFFFF);
+                    assert(a & 0x07FFFFFF);
+                }
+                else
+                {
+                    int64_t n = ( ((int64_t)(v[1]) << 32) | v[2]);
+                    assert(n!=0);
+                    if(a & 0x04000000)
+                        v -= n;
+                    else if(a & 0x02000000)
+                    {
+                        v = (const_value)(intptr_t)n;
+                        if(v==NULL) break;
+                    }
+                }
+            }
+            else break;
+        }
+    }return v;
+}
 
-#define MVA(A,i,j,cols) *( MVE(A,i,cols) + ((cols==1) ? 0 : (1+j)) )
+static inline value setRef (value v, const_value n) // set Reference pointer
+{   if(v){
+        register uint64_t b = v>n ? (v-n) : -(uint64_t)(n-v);
+        if(b < 0x08000000)
+            *v++ = (VAL_POINTER<<28) | 0x08000000 | (uint32_t)b;
+        else
+        {   *v++ = (VAL_POINTER<<28) | 0x04000000;
+            *v++ = (uint32_t)(b >> 32);
+            *v++ = (uint32_t) b;
+            *v++ = (VAL_OFFSET<<28) | 3;
+        }
+    }return v;
+}
 
-#define MSIZE(rows, cols) ((cols==1) ? (1+rows) : (1+rows*(1+cols)))
+static inline value setAbsRef (value v, const_value n)
+{   if(v){
+        register int64_t b = (intptr_t)n;
+        *v++ = (VAL_POINTER<<28) | 0x02000000;
+        *v++ = (uint32_t)(b >> 32);
+        *v++ = (uint32_t) b;
+        *v++ = (VAL_OFFSET<<28) | 3;
+    }return v;
+}
 
 
-extern const value *VST11,
-                   *VST21,
-                   *VST31,
-                   *VST41,
-                   *VST61,
-                   *VST33;
-void SET_VSTXX ();
+value setMessage  (value v, int code, int argc, const_Str2* argv);
+value setMessageE (value v, int code, int argc, const_Str2* argv, const_Str3 str);
+const_Str2 getMessage (const_value v);
 
-bool valueSt_get_position (int* position, const value* parameter, const lchar* lstr);
+static inline value setError (value v, const wchar* msg)
+{ return setMessage(v, 0, 1, &msg); }
+
+static inline value setErrorE (value v, const wchar* msg, const_Str3 str)
+{ return setMessageE(v, 0, 1, &msg, str); }
+
+
+static inline bool isBool (const_value v)
+{ return v && (v[0] & 0xFFFFFFFE)==(VAL_ENUMER<<28) ; }
+
+static inline bool isStr1 (const_value v)
+{ return v && (v[0]>>28)==VAL_ARRRAY && v[1]==(VAL_ENUMER<<28 | 0x10000) ; }
+
+static inline bool isStr2 (const_value v)
+{ return value_type(v)==aString; }
+
+static inline const_Str1 getStr1 (const_value n)
+{
+    assert(isStr1(n));
+    Str1 s = (char*)(n+2);
+    assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
+    return s;
+}
+static inline const_Str2 getStr2 (const_value n)
+{
+    assert(isStr2(n));
+    Str2 s = (wchar*)(n+2);
+    assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
+    return s;
+}
+value onSetStr1(value v, const_Str1 end);
+value onSetStr2(value v, const_Str2 end);
+value setStr21 (value v, const_Str1 in);
+value setStr22 (value v, const_Str2 in);
+value setStr23 (value v, const_Str3 in);
+
+value value_alloc (value old, long size);
+#define value_free(old) value_alloc(old, 0)
+
+value check_arguments (value v, uint32_t c, uint32_t count);
+
+
+// if in==NULL then the output matrix is filled with zeros
+value integToValue (value out, int rows, int cols, const SmaInt* in);
+value floatToValue (value out, int rows, int cols, const SmaFlt* in);
+
+bool integFromValue (value v, int rows, int cols,  int  * output, const char* name);
+bool floatFromValue (value v, int rows, int cols, SmaFlt* output, const char* name);
+
+// return a 0-filled integer matrix
+const_value VSTXX (int rows, int cols);
+#define VST11 VSTXX(1,1)
+#define VST21 VSTXX(2,1)
+#define VST31 VSTXX(3,1)
+#define VST41 VSTXX(4,1)
+#define VST61 VSTXX(6,1)
+#define VST33 VSTXX(3,3)
 
 
 #endif
-

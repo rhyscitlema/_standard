@@ -1,13 +1,5 @@
 /*
     _malloc.c
-
-    IMPORTANT: There must be NO memory corruption caused by the user.
-
-    Big Problem:
-    What should the user do if memory cannot be allocated? Especially
-    for _realloc() where the originally allocated memory is even freed!
-
-    Copyright (c) 2014, Rhyscitlema <info@rhyscitlema.com>.
 */
 
 #include "_malloc.h"
@@ -18,28 +10,46 @@
 
 #include <malloc.h>
 
-void* _malloc (long size)
-{ memory_alloc("Memory"); return malloc(size); }
+void* _realloc (void* old, long size, const char* type)
+{
+    void* out = NULL;
+    if(size<0) size=0;
+    if(!size) free(old);
+    else out = realloc(old, size);
 
-void* _realloc (void* address, long size)
-{ if(!address) memory_alloc("Memory"); return realloc(address, size); }
-
-void _free (void* address)
-{ if(address) memory_freed("Memory"); free(address); }
+    if(!type) type = "newtype";
+    if(out || !size){
+        if(!old &&  size) memory_alloc(type);
+        if( old && !size) memory_freed(type);
+    }
+    return out;
+}
 
 #else
 
+/*
+    IMPORTANT: There must be NO memory corruption caused by the user.
 
+    Big Problem:
+    What should the user do if memory cannot be allocated? Especially
+    for _realloc() where the originally allocated memory is even freed!
 
-#include <_stdio.h>
+    Copyright (c) 2014, Rhyscitlema <info@rhyscitlema.com>.
+*/
+
+#include "_stddef.h"
+#define puts1(...)
+#define sprintf1(...)
 
 typedef struct _FreeMemory
 {
-    char* start;
-    char* stop;
+    size_t* start;
+    size_t* stop;
     struct _FreeMemory *next;
     struct _FreeMemory *prev;
 } FreeMemory;
+
+#define FMSIZE (sizeof(FreeMemory)/sizeof(size_t))
 
 static FreeMemory *firstFreeMemory = NULL;
 
@@ -59,36 +69,37 @@ static void printFreeMemory (const char* debugString)
 {
     /*char str[1000];
     FreeMemory *freeMemory;
-    sprintf0(str, "\n------------------------ %s\n", debugString);
-    puts0(str);
+    sprintf1(str, "\n------------------------ %s\n", debugString);
+    puts1(str);
 
     for(freeMemory = firstFreeMemory; freeMemory != NULL; freeMemory = freeMemory->next)
     {
-        sprintf0(str, "freeMemory = %p vs %p, start=%p stop=%p prev=%p next=%p\n",
-        freeMemory, freeMemory->stop - sizeof(FreeMemory), freeMemory->start,
+        sprintf1(str, "freeMemory = %p vs %p, start=%p stop=%p prev=%p next=%p\n",
+        freeMemory, freeMemory->stop - FMSIZE, freeMemory->start,
         freeMemory->stop, freeMemory->prev, freeMemory->next);
-        puts0(str);
+        puts1(str);
     }
-    sprintf0(str, "fragmentsCount = %d\n", getFragmentsCount());
-    puts0(str);*/
+    sprintf1(str, "fragmentsCount = %d\n", getFragmentsCount());
+    puts1(str);*/
 }
 
 
 
-void useFreeMemory (void* freeMemoryArray, long freeMemorySize)
+void useFreeMemory (long* freeMemoryArray, long length)
 {
-    //FreeMemory *freeMemory;
-    if(!freeMemoryArray || !freeMemorySize) return;
+    if(!freeMemoryArray || !length) return;
+    length = length*sizeof(long)/sizeof(size_t);
+    size_t* freeMemoryArr = (size_t*)freeMemoryArray;
 
-    if(firstFreeMemory == NULL)
+    if(firstFreeMemory==NULL)
     {
-        firstFreeMemory = (FreeMemory*) ((char*)freeMemoryArray + freeMemorySize - sizeof(FreeMemory));
-        firstFreeMemory->start = (char*)freeMemoryArray;
-        firstFreeMemory->stop  = (char*)freeMemoryArray + freeMemorySize;
+        firstFreeMemory = (FreeMemory*) (freeMemoryArr + length - FMSIZE);
+        firstFreeMemory->start = freeMemoryArr;
+        firstFreeMemory->stop  = freeMemoryArr + length;
         firstFreeMemory->next  = NULL;
         firstFreeMemory->prev  = NULL;
     }
-    else // firstFreeMemory != NULL   TODO: to be implement later ...
+    else // firstFreeMemory != NULL   TODO: to be implemented later ...
     {
         //while(freeMemory->next != NULL)
         //    freeMemory = freeMemory->next;
@@ -98,54 +109,52 @@ void useFreeMemory (void* freeMemoryArray, long freeMemorySize)
 
 
 
-void* _malloc (long size)
+static void* do_malloc (size_t size)
 {
     char debugString[100];
     FreeMemory *freeMemory;
-    char* result;
-    char* r;
-    long x=0;
+    size_t *r, *result;
+    size_t x=0;
 
-    if(size < sizeof(FreeMemory) - sizeof(long))
-       size = sizeof(FreeMemory) - sizeof(long);
+    if(size < FMSIZE-1)
+       size = FMSIZE-1;
 
     for(freeMemory = firstFreeMemory; freeMemory != NULL; freeMemory = freeMemory->next)
     {
         /* if( available memory >= required memory ) */
-        if( freeMemory->stop >= (freeMemory->start + size + sizeof(long)) )
-        { x =freeMemory->stop - (freeMemory->start + size + sizeof(long));
-          break; }
+        if( freeMemory->stop >= (freeMemory->start + size + 1) )
+        { x =freeMemory->stop - (freeMemory->start + size + 1); break; }
     }
-    if(freeMemory == NULL) { puts0("Error: Malloc Fail   "); return NULL; }
+    if(freeMemory == NULL) { puts1("Error: Malloc Fail   "); return NULL; }
 
     // Reserve space where size of memory block will be stored.
-    // Note: stored size is that of entire block including sizeof(long) bytes.
-    result = freeMemory->start + sizeof(long);
+    // Note: stored size is that of entire block, so do a +1.
+    result = freeMemory->start + 1;
 
     // If remaining memory can contain a structure
-    if(x >= sizeof(FreeMemory))
+    if(x >= FMSIZE)
     {
-        sprintf0(debugString, "_MALLOC 1 result_start = %p  result_stop = %p",
-            freeMemory->start, freeMemory->start + size + sizeof(long));
+        sprintf1(debugString, "_MALLOC 1 result_start = %p  result_stop = %p",
+            freeMemory->start, freeMemory->start + size + 1);
 
         // If the 'current' structure will not be overwritten,
         // Then re-assign the new size of the free memory block.
-        *((long*)(freeMemory->start)) = size + sizeof(long);
-        freeMemory->start             += size + sizeof(long);
+        *freeMemory->start = size+1;
+        freeMemory->start += size+1;
     }
     else
     {
-        sprintf0(debugString, "_MALLOC 2 result_start = %p  result_stop = %p",
+        sprintf1(debugString, "_MALLOC 2 result_start = %p  result_stop = %p",
             freeMemory->start, freeMemory->stop);
 
         // Else, completely remove (or un-free) the 'current' free memory block,
         // by storing the size of the allocated memory as being that of the entire freeMemory.
-        *((long*)(freeMemory->start)) = freeMemory->stop - freeMemory->start;
-        deleteNode (freeMemory);
+        *freeMemory->start = freeMemory->stop - freeMemory->start;
+        deleteNode(freeMemory);
     }
 
     // set all data to 0xFF, so that improper code will hopefully crash...!!!
-    for(r = result; r < result+size; r++) *r = 0xFF;
+    for(r = result; r < result+size; r++) *r = ~(size_t)0;
 
     printFreeMemory(debugString);
     return result;
@@ -153,22 +162,22 @@ void* _malloc (long size)
 
 
 
-void _free (void* address)
+static void do_free (void* address)
 {
     char debugString[100];
-    char *startC;   // start of current freed memory block
-    char *stopC;    // stop of current freed memory block
-    char *stopP;    // stop of preceding free memory block
-    char *startN;   // start of succeeding free memory block
+    size_t *startC;   // start of current freed memory block
+    size_t *stopC;    // stop of current freed memory block
+    size_t *stopP;    // stop of preceding free memory block
+    size_t *startN;   // start of succeeding free memory block
     FreeMemory *freeMemory, *temp;
 
     if(address==NULL) return;
 
     // starting address = given address - memory reserved to store total size
-    startC = (char*)address - sizeof(long);
+    startC = (size_t*)address - 1;
 
     // stopping address = starting address + total size of memory block to be freed
-    stopC  = startC + *((long*)startC);
+    stopC  = startC + *startC;
 
     for(freeMemory = firstFreeMemory; freeMemory != NULL; freeMemory = freeMemory->next)
     {
@@ -187,10 +196,10 @@ void _free (void* address)
 
     if(stopP != startC && stopC != startN)  // If nothing to concatenate on neither left nor right
     {
-        sprintf0(debugString, "_FREE 1 startC = %p  stopC = %p", startC, stopC);
+        sprintf1(debugString, "_FREE 1 startC = %p  stopC = %p", startC, stopC);
 
         // Prepare to put structure at the end of freed memory block
-        temp = (FreeMemory*)(stopC - sizeof(FreeMemory));
+        temp = (FreeMemory*)(stopC - FMSIZE);
 
         temp->start = startC;
         temp->stop  = stopC;
@@ -204,7 +213,7 @@ void _free (void* address)
 
     else if(stopP != startC && stopC == startN) // If can only concatenate with the right free block
     {
-        sprintf0(debugString, "_FREE 2 startC = %p  stopC = %p", startC, stopC);
+        sprintf1(debugString, "_FREE 2 startC = %p  stopC = %p", startC, stopC);
 
         freeMemory->start = startC;
     }
@@ -212,10 +221,10 @@ void _free (void* address)
     else if(stopP == startC && stopC != startN) // If can only concatenate with the left free block
     {
         // this section will crash iff startC is ever NULL
-        sprintf0(debugString, "_FREE 3 startC = %p  stopC = %p", startC, stopC);
+        sprintf1(debugString, "_FREE 3 startC = %p  stopC = %p", startC, stopC);
 
         // move the structure from previous to new location
-        temp = (FreeMemory*)(stopC - sizeof(FreeMemory));
+        temp = (FreeMemory*)(stopC - FMSIZE);
 
         temp->start = freeMemory->prev->start;
         temp->stop  = stopC;
@@ -230,7 +239,7 @@ void _free (void* address)
     else //if(stopP == startC && stopC == startN) // If can concatenate with both left and right blocks
     {
         // this section will crash iff startC is ever NULL
-        sprintf0(debugString, "_FREE 4 startC = %p  stopC = %p", startC, stopC);
+        sprintf1(debugString, "_FREE 4 startC = %p  stopC = %p", startC, stopC);
         temp = freeMemory->prev;
         freeMemory->start = temp->start;
         freeMemory->prev  = temp->prev;
@@ -247,20 +256,32 @@ void _free (void* address)
 
 
 
-void* _realloc (void* address, long size)
+void* _realloc (void* old, long size, const char* type)
 {
-    int totalSize;
-
-    if(address != NULL)
-    {
-        totalSize = *((long*)((char*)address - sizeof(long)));
-
-        if(size == totalSize-sizeof(long))
-            return address;
-
-        _free (address);
+    size = ((size+sizeof(size_t)-1)/sizeof(size_t));
+    void* out = NULL;
+    if(size<0) size=0;
+    if(!size) do_free(old);
+    else if(!old)
+        out = do_malloc(size);
+    else{
+        size_t totalSize = *((size_t*)old-1);
+        if(size == totalSize-1)
+            out = old;
+        else{
+            do_free(old);
+            out = do_malloc(size);
+            size_t* n = (size_t*)out;
+            size_t* o = (size_t*)old;
+            while(size--) *n++ = *o++;
+        }
     }
-    return _malloc (size);
+    if(!type) type = "newtype";
+    if(out || !size){
+        if(!old &&  size) memory_alloc(type);
+        if( old && !size) memory_freed(type);
+    }
+    return out;
 }
 
 
@@ -280,62 +301,58 @@ long getFragmentsCount ()
 
 
 
-#include <string.h>
-void* meminc (void* old_mem, long old_size, long new_size)
-{
-    void* new_mem;
-    if(old_size >= new_size) return old_mem;
-    new_mem = _malloc (new_size);
-    memcpy (new_mem, old_mem, old_size);
-    _free(old_mem);
-    return new_mem;
-}
-
-
 /***********************************************************************************************************/
 
 #ifdef DEBUG
 
-#include "_strfun.h"
-#include <stdio.h> // TODO: removing this does not cause an error in Ubuntu-GCC, why?
+#include <stdio.h>
 #include <assert.h>
 
-typedef struct _MEM {
-    const char* name;
+typedef struct _MEM
+{   const char* type;
     int alloc, freed;
 } MEM;
 
 static MEM mem[100];
 
-void memory_alloc (const char* name)
+static _Bool equal (const char* a, const char* b)
 {
-    int i;
-    for(i=0; mem[i].name!=NULL; i++)
-        if(0==strcmp(name, mem[i].name))
-        { mem[i].alloc++; break; }
-    if(!mem[i].name)
-    {   mem[i].name = name;
-        mem[i].alloc = 1;
+    _Bool r=false;
+    if(a && b){
+        for( ; *a==*b; a++,b++)
+        { if(!*a) { r=true; break; } }
     }
+    return r;
 }
 
-void memory_freed (const char* name)
+void onMemoryOperation (const char* type, bool allocated)
 {
     int i;
-    for(i=0; mem[i].name!=NULL; i++)
-        if(0==strcmp(name, mem[i].name))
-        { mem[i].freed++; break; }
-    if(mem[i].name==NULL) printf("Software Error in memory_freed: '%s' not found.\n", name);
-    assert(mem[i].name!=NULL);
-}
-
-void memory_print ()
-{
-    int i;
-    for(i=0; mem[i].name!=NULL; i++)
-        printf("%-15s:   alloc = %-7d   freed = %-7d   difference = %d\n",
-            mem[i].name, mem[i].alloc, mem[i].freed, mem[i].alloc - mem[i].freed);
-    printf("\n");
+    if(!type) // print statistics
+    {
+        for(i=0; mem[i].type!=NULL; i++)
+            printf("%-15s:   alloc = %-7d   freed = %-7d   difference = %d\n",
+                mem[i].type, mem[i].alloc, mem[i].freed, mem[i].alloc - mem[i].freed);
+        printf("\n");
+    }
+    else if(!allocated) // record memory freed
+    {
+        for(i=0; mem[i].type!=NULL; i++)
+            if(equal(type, mem[i].type))
+            { mem[i].freed++; break; }
+        if(mem[i].type==NULL) printf("Software Error in memory_freed: '%s' not found.\n", type);
+        assert(mem[i].type!=NULL);
+    }
+    else // record memory allocated
+    {
+        for(i=0; mem[i].type!=NULL; i++)
+            if(equal(type, mem[i].type))
+            { mem[i].alloc++; break; }
+        if(!mem[i].type)
+        {   mem[i].type = type;
+            mem[i].alloc = 1;
+        }
+    }
 }
 
 #endif // end of #ifdef DEBUG
@@ -358,7 +375,7 @@ void memory_print ()
 
     So the result is r = the latest non-zero 'n'.
     If initial was not a power of 2 then do r<<1.
-*/
+
 static inline long pow2ceil (register long n)
 {
     register long y=n;
@@ -374,3 +391,5 @@ static inline int ilog2 (register long n)
     for( ; n!=0; n>>=1) y++;
     return y;
 }
+*/
+

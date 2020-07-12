@@ -1,265 +1,275 @@
 /*
     _texts.c
 
+    TWSF = Text With Space False
+    TWSF = Text With Space True
+
     NOTE: The code (mainly due to the algorithm) in this source file
-    is quite hard-coded. The code is essentially based on the important
+    is quite hard-coded. It is essentially based on the important
     assumption of the structure in which Identities are.
 */
 
 #include "_string.h"
-#include "_stdio.h"
 #include "_math.h"
 #include "_texts.h"
 
 
-#define MSLLF 30  // maximum string length for loaded TWSF
-#define MSLLT 200 // maximum string length for loaded TWST
-static wchar loaded_TWSF [ID_TWSF_STOP][MSLLF+1]; // pointer to the loaded TWSF per ID
-static wchar loaded_TWST [ID_TWST_STOP][MSLLT+1]; // pointer to the loaded TWST per ID
+static const_Str2 default_twsf (enum RFET_LANGUAGE language);
+static const_Str2 default_twst (enum RFET_LANGUAGE language);
 
-const wchar* TWSF (enum ID_TWSF ID) { return loaded_TWSF[ID]; } // get loaded Text-With-Space-False
-const wchar* TWST (enum ID_TWST ID) { return loaded_TWST[ID]; } // get loaded Text-With-Space-True
+static wchar loaded_TWSF[ID_TWSF_STOP][100 +1];
+static wchar loaded_TWST[ID_TWST_STOP][1000+1];
+
+const_Str2 TWSF (enum ID_TWSF ID) { return loaded_TWSF[ID]; }
+const_Str2 TWST (enum ID_TWST ID) { return loaded_TWST[ID]; }
 
 
-bool texts_load_twst (const wchar* fileContent)
+bool texts_load_twst (value stack, enum RFET_LANGUAGE language)
 {
-    int i, k, ID, ending_size;
-    wchar c, data[MSLLT], *ending;
+    int ID;
+    const_Str2 str;
+    const_Str2 data = default_twst(language);
 
-    // get the 'ending sequence' of non-space characters
-    ID = End_Of_Text;
-    ending = loaded_TWST[ID];
+    const_Str2 ending = L"[[]]";
+    long endingSize = strlen2(ending)*sizeof(*ending);
 
-    strcpy21 (ending,"[[]]");
-    ending_size = strlen2(ending);
-
-    for(i=1, c = fileContent[i]; c != '\0'; c = fileContent[++i])
+    for( ; !strEnd2(data); data++)
     {
-        if(!isDigit(c)) continue;
-
         // Load the ID number
-        k=0;
-        while(isDigit(c))
-        {
-            data[k++] = c;
-            c = fileContent[++i];
-        }
-        data[k] = '\0';
+        str = data;
+        while(!strEnd2(data) && isDigit(*data)) data++;
+        if(str == data) continue; // if no ID
 
         // Check if the number is space-enclosed
-        if(!isSpace(c) || !isSpace(fileContent[i-k-1])) continue;
+        if(!isSpace(*data) || !isSpace(*(str-1))) continue;
 
         // Get the ID number
-        ID=0; strToInt (data, &ID);
+        int n = data-str;
+        wchar wstr[n+1];
+        strcpy22S(wstr, str, n);
+        ID = strToInt(wstr, stack);
 
         // If ID = 0 then ignore entire line
         if(ID==0)
         {
-            while(c!='\n' && c!='\0') c = fileContent[++i];
-            if(c=='\0') break;
+            while(!strEnd2(data) && *data!='\n') data++;
             continue;
         }
 
         // If ID number is invalid then ignore it
-        if(!is_TWST_ID(ID)) continue;
+        if(!IS_TWST_ID(ID)) continue;
 
         // Check if ID was already loaded
-        if(loaded_TWST[ID][0]!=0) continue;
+        if(!strEnd2(loaded_TWST[ID])) continue;
 
         // Get to the first newline character
-        while(c!='\n' && c!='\0') c = fileContent[++i];
-        if(c=='\0') break;
+        while(!strEnd2(data) && *data!='\n') data++;
+        if(strEnd2(data)) break;
+        data++; // skip '\n'
 
-        // Load message from after the newline, until when the ending sequence of non-space
-        // characters is detected, or until when the end of fileContent is detected.
-        k=0;
-        while(c!='\0')
+        // Load message from after the newline, until when the ending sequence of
+        // non-space characters is detected, or until when the end of data is detected.
+        str = data;
+        for( ; !strEnd2(data); data++)
+            if(0==memcmp(data, ending, endingSize)) break;
+
+        n = data-str;
+        if(n > 1000)
         {
-            c = fileContent[++i];
-            if(0==strcmp22S(ending, fileContent+i, ending_size)) break;
-            data[k++] = c;
-
-            if(k >= MSLLT) { sprintf2(errorMessage(), L"On loading text-with-space-true of ID = %s, text length is greater than maximum allowed of %s.", TIS2(0,ID), TIS2(1,MSLLT)); break; }
+            const_Str2 argv[2];
+            argv[0] = L"Error on loading TWST ID %s, text length must be <= 1000.";
+            argv[1] = TIS2(0,ID);
+            setMessage(stack, 0, 2, argv);
+            return false;
         }
-
-        // Copy loaded message to the corresponding ID pointer
-        data[k] = '\0';
-        strcpy22 (loaded_TWST[ID], data);
+        // Set loaded message to the corresponding ID
+        strcpy22S(loaded_TWST[ID], str, n);
     }
-    return 1;
+    return true;
 }
 
 
-bool texts_load_twsf (const wchar* fileContent)
+bool texts_load_twsf (value stack, enum RFET_LANGUAGE language)
 {
-    int i, k, ID;
-    wchar c, data[MSLLF];
+    int ID;
+    const_Str2 str;
+    const_Str2 data = default_twsf(language);
 
-    for(i=1, c = fileContent[i]; c != '\0'; c = fileContent[++i])     // c is always equal to fileContent[i]
+    for( ; !strEnd2(data); data++)
     {
-        if(!isDigit(c)) continue;
-
         // Load the ID number
-        k=0;
-        while(isDigit(c))
-        {
-            data[k++] = c;
-            c = fileContent[++i];
-        }
-        data[k] = '\0';
+        str = data;
+        while(!strEnd2(data) && isDigit(*data)) data++;
+        if(str == data) continue; // if no ID
 
         // Check if the number is space-enclosed
-        if(!isSpace(c) || !isSpace(fileContent[i-k-1])) continue;
+        if(!isSpace(*data) || !isSpace(*(str-1))) continue;
 
         // Get the ID number
-        ID=0; strToInt (data, &ID);
+        int n = data-str;
+        wchar wstr[n+1];
+        strcpy22S(wstr, str, n);
+        ID = strToInt(wstr, stack);
 
         // If ID = 0 then ignore entire line
         if(ID==0)
         {
-            while(c!='\n' && c!='\0') c = fileContent[++i];
-            if(c=='\0') break;
+            while(!strEnd2(data) && *data!='\n') data++;
             continue;
         }
 
         // If ID number is invalid then ignore it
-        if(!is_TWSF_ID(ID)) continue;
+        if(!IS_TWSF_ID(ID)) continue;
 
         // Check if ID was already loaded
-        if(loaded_TWSF[ID][0]!=0) continue;
+        if(!strEnd2(loaded_TWSF[ID])) continue;
 
         // Get to the first non-space character
-        while (isSpace(c)) c = fileContent[++i];
-        if(c=='\0') break;
+        while(!strEnd2(data) && isSpace(*data)) data++;
+        if(strEnd2(data)) break;
 
         // Load the sequence of non-space character that follows
-        k=0;
-        while(!isSpace(c) && c!='\0')
-        {
-            data[k++] = c;
-            c = fileContent[++i];
-            if(k >= MSLLF) { sprintf2(errorMessage(), L"On loading text-with-space-false of ID = %s, text length is greater than maximum allowed of %s.", TIS2(0,ID), TIS2(1,MSLLF)); break; }
-        }
+        str = data;
+        while(!strEnd2(data) && !isSpace(*data)) data++;
 
-        // Copy loaded operation to the corresponding ID pointer
-        data[k] = '\0';
-        strcpy22 (loaded_TWSF[ID], data);
+        n = data-str;
+        if(n > 100)
+        {
+            const_Str2 argv[2];
+            argv[0] = L"Error on loading TWSF ID %s, text length must be <= 100.";
+            argv[1] = TIS2(0,ID);
+            setMessage(stack, 0, 2, argv);
+            return false;
+        }
+        // Set loaded message to the corresponding ID
+        strcpy22S(loaded_TWSF[ID], str, n);
     }
-    return 1;
+    return true;
 }
 
 
-bool is_TWSF_ID (int ID)
+bool IS_TWSF_ID (int ID)
 {
     switch(ID)
     {
-    case Opened_Bracket_1: break;
-    case Opened_Bracket_2: break;
-    case Opened_Bracket_3: break;
-    case Closed_Bracket_1: break;
-    case Closed_Bracket_2: break;
-    case Closed_Bracket_3: break;
+    case OpenedBracket1:
+    case OpenedBracket2:
+    case OpenedBracket3:
+    case ClosedBracket1:
+    case ClosedBracket2:
+    case ClosedBracket3:
 
-    case DecimalPoint: break;
-    case CommaSeparator: break;
-    case EndOfStatement: break;
-    case DoubleQuote: break;
-    case Assignment: break;
+    case EndOfStatement:
+    case CommaSeparator:
+    case Concatenate:
+    case Replacement:
+    case ConditionAsk:
+    case ConditionChoose:
+    case DecimalPoint:
+    case DoubleQuote:
 
-    case Concatenate: break;
-    case Replacement: break;
-    case ConditionAsk: break;
-    case ConditionChoose: break;
+    case Logical_OR:
+    case Logical_AND:
+    case Logical_NOT:
+    case Oper_mod:
 
-    case Equal_1: break;
-    case Equal_2: break;
-    case NotEqual_1: break;
-    case NotEqual_2: break;
-    case LessThan_1: break;
-    case LessThan_2: break;
-    case GreaterThan_1: break;
-    case GreaterThan_2: break;
-    case LessOrEqual_1: break;
-    case LessOrEqual_2: break;
-    case GreaterOrEqual_1: break;
-    case GreaterOrEqual_2: break;
+    case Assignment:
+    case EqualTo:
+    case SameAs:
+    case NotSame:
+    case NotEqual:
+    case LessThan:
+    case GreaterThan:
+    case LessOrEqual:
+    case GreaterOrEqual:
 
-    case Positive: break;
-    case Negative: break;
-    case Plus: break;
-    case Minus: break;
-    case Times_1: break;
-    case Times_2: break;
-    case Divide_1: break;
-    case Divide_2: break;
-    case ToPower_1: break;
-    case ToPower_2: break;
-    case DotProduct: break;
-    case Factorial: break;
-    case Transpose: break;
+    case Oper_pos:
+    case Oper_neg:
+    case Oper_add:
+    case Oper_sub:
 
-    case Ari_Shift_Right: break;
-    case Ari_Shift_Left: break;
-    case Bitwise_OR: break;
-    case Bitwise_XOR: break;
-    case Bitwise_AND: break;
-    case Bitwise_NOT: break;
+    case Oper_mul1:
+    case Oper_mul2:
+    case Oper_div1:
+    case Oper_divI:
+    case Oper_div2:
+    case Oper_pow1:
+    case Oper_pow2:
 
-    case Logical_OR: break;
-    case Logical_AND: break;
-    case Logical_NOT: break;
-    case Modulo_Remainder: break;
+    case Shift_Left:
+    case Shift_Right:
+    case Bitwise_XOR:
+    case Bitwise_OR:
+    case Bitwise_AND:
+    case Bitwise_NOT:
 
-    case Constant_E_2_718_: break;
-    case Constant_PI_3_141_: break;
-    case SQRT_of_Negative_One: break;
+    case Oper_dotproduct:
+    case Oper_transpose:
 
-    case Function_Power_of_e: break;
-    case Function_Logarithm_Base_e: break;
-    case Function_Logarithm_Base_10: break;
-    case Function_Square_Root: break;
-    case Function_Math_Ceil: break;
-    case Function_Math_Floor: break;
-    case Function_FullFloor: break;
-    case Function_GetPrimes: break;
+    case Constant_this:
+    case Constant_true:
+    case Constant_false:
+    case Constant_e_2_718_:
+    case Constant_pi_3_141_:
+    case SQRT_of_Neg_One:
 
-    case Function_Absolute_Value: break;
-    case Function_Argument_Angle: break;
-    case Function_Real_Part: break;
-    case Function_Imag_Part: break;
-    case Function_Complex_Conjugate: break;
-    case Function_Complex_Projection: break;
+    case Function_factorial:
+    case Function_fullfloor:
+    case Function_getprimes:
+    case Function_srand:
+    case Function_rand:
 
-    case Function_aRandom_Number: break;
-    case Function_sRandom_Number: break;
-    case Function_Summation: break;
-    case Function_Maximum: break;
-    case Function_Minimum: break;
+    case Function_gcd:
+    case Function_ilog:
+    case Function_isqrt:
+    case Function_floor:
+    case Function_ceil:
 
-    case Trigonometric_Sine: break;
-    case Trigonometric_Cosine: break;
-    case Trigonometric_Tangent: break;
-    case Trigonometric_Sine_Inverse: break;
-    case Trigonometric_Cosine_Inverse: break;
-    case Trigonometric_Tangent_Inverse: break;
-    case Hyperbolic_Sine: break;
-    case Hyperbolic_Cosine: break;
-    case Hyperbolic_Tangent: break;
-    case Hyperbolic_Sine_Inverse: break;
-    case Hyperbolic_Cosine_Inverse : break;
-    case Hyperbolic_Tangent_Inverse: break;
+    case Function_sqrt:
+    case Function_cbrt:
+    case Function_exp:
+    case Function_log:
 
-    case Generate_Range: break;
-    case Generate_Vector: break;
-    case Length_of_Value: break;
-    case Size_of_Value: break;
-    case Try_And_Catch: break;
-    case Print_Value: break;
+    case Function_cos:
+    case Function_sin:
+    case Function_tan:
+    case Function_acos:
+    case Function_asin:
+    case Function_atan:
 
-    case Convert_To_Str: break;
-    case Convert_To_Num: break;
-    case Convert_To_Rat: break;
-    case Convert_To_Flt: break;
+    case Function_cosh:
+    case Function_sinh:
+    case Function_tanh:
+    case Function_acosh:
+    case Function_asinh:
+    case Function_atanh:
+
+    case Function_cabs:
+    case Function_carg:
+    case Function_real:
+    case Function_imag:
+    case Function_conj:
+    case Function_proj:
+
+    case Function_size:
+    case Function_span:
+    case Function_sum:
+    case Function_max:
+    case Function_min:
+
+    case Function_vector:
+    case Function_range:
+    case Function_try:
+
+    case Function_tostr:
+    case Function_tonum:
+    case Function_torat:
+    case Function_toflt:
+
+    case Function_eval:
+    case Function_call:
+    case Function_print:
+    case Function_strlen: break;
 
     default: return false;
     }
@@ -267,52 +277,44 @@ bool is_TWSF_ID (int ID)
 }
 
 
-bool is_TWST_ID (int ID)
+bool IS_TWST_ID (int ID)
 {
     switch(ID)
     {
-    case Component_Already_Defined: break;
-    case Parameter_Vst_Is_Invalid: break;
-    case Result_Vst_Is_Invalid: break;
+    case Cannot_Find_Component:
+    case Component_Already_Defined:
 
-    case IsNot_ValueStructure: break;
-    case Invalid_Expression_End: break;
-    case Invalid_Expression_Syntax: break;
-    case Bracket_Match_Invalid: break;
-    case Bracket_Match_None: break;
-    case Lacking_Bracket: break;
-    case Lacking_Brackets: break;
+    case IsNot_ValueStructure:
+    case Invalid_Expression_End:
+    case Invalid_Expression_Syntax:
 
-    case IsNot_Number: break;
-    case IsNot_Component: break;
-    case Deadlock_Found: break;
+    case Bracket_Match_Invalid:
+    case Bracket_Match_None:
+    case Lacking_Bracket:
 
-    case Invalid_Operand: break;
-    case Operands_DoNot_Match: break;
-    case Operand_IsNot_Matrix: break;
-    case Argument_vs_Parameter: break;
+    case Operands_DoNot_Match:
+    case Operand_IsNot_Matrix:
+    case Argument_vs_Parameter:
+    case ResultSt_vs_Expected:
 
-    case Indexing_Single_Number: break;
-    case Index_OutOf_Range: break;
-    case Vector_Starting_Value: break;
-    case Vector_Stopping_Value: break;
-    case Vector_Middle_Value: break;
-    case Vector_Length_Invalid: break;
+    case Index_OutOf_Range:
+    case Vector_Middle_Value:
+    case Vector_Length_Invalid:
 
-    case Left_IsNot_Matrix: break;
-    case Right_IsNot_Matrix: break;
-    case MatrixMult_IsInvalid: break;
-    case Matrix_IsNot_NbyN: break;
-    case Left_IsNot_Single: break;
-    case Right_IsNot_Single: break;
+    case Left_IsNot_Matrix:
+    case Right_IsNot_Matrix:
+    case MatrixMult_IsInvalid:
+    case Matrix_IsNot_NbyN:
+    case Left_IsNot_Single:
+    case Right_IsNot_Single:
 
-    case Expect_Question_Before: break;
-    case Expect_Choice_After: break;
-    case Condition_IsNot_Single: break;
+    case Expect_Question_Before:
+    case Expect_Choice_After:
+    case Condition_IsNot_Single:
 
-    case Division_By_Zero: break;
-    case Not_On_Complex_Number: break;
-    case Only_On_Integer_Number: break;
+    case Division_By_Zero:
+    case Operand_Not_Supported:
+    case Only_On_Integer_Number:
     case Argument_OutOf_Domain: break;
 
     default: return false;
@@ -321,430 +323,328 @@ bool is_TWST_ID (int ID)
 }
 
 
+/*
+0 Below are texts 'with space allowed' that are used by the software.
+0
+0 They are structured as:
+0
+0    <Identity Number>    <ignored... can be used for small comments>
+0<target text> <Ending sequence of non-space characters> <ignored until next ID>
+0
+0
+0 They are loaded as follows:
+0
+0 1) Any content is ignored until a space-enclosed number is detected.
+0
+0 2) If the detected number is 0 then the line that follows is ignored.
+0
+0 3) If the detected number is 1 then the first sequence
+0    of non-space characters which follows is loaded.
+0    Then we go to step 1 and detect the next number.
+0
+0 4) Any content until the first encounter of a newline is ignored.
+0
+0 5) If the detected number is a valid Identity Number
+0    as specified by the software provider, then
+0    extraction starts from just after the newline.
+0    If not then we go to step 1 and detect the next number.
+0
+0 5) Extraction stops when the End_Of_Text sequence of non-space
+0    characters, as specified by Indenty Number 1, is detected.
+0    Then we go to step 1 and detect the next number.
+0
+0 Note: The place-holders are specified using: \<number>.
+0       For example \1 means: give special meaning to the number 1.
+0       This special meaning is: the place-holder for the first argument.
+0       Here the 1st, 2nd and 3rd arguments are the file, line and column.
+0
+0 Note: If an Identity Number is not found then the default setting,
+0       as built in the software, is used. This setting is actually
+0       the original version of this file as given by the software.
+*/
 static const wchar default_twst_ENGLISH[] =
-{
-    48, 32, 84,104,105,115, 32,102,105,108,101, 32, 99,111,110,116, 97,105,110,115, 32,116,101,120,116,
-   115, 44, 32,119,105,116,104, 32,115,112, 97, 99,101, 32, 97,108,108,111,119,101,100, 44, 32,116,104,
-    97,116, 32, 97,114,101, 32,108,111, 97,100,101,100, 32, 97,110,100, 32,117,115,101,100, 46, 13, 10,
-    48, 13, 10, 48, 32, 84,104,101,121, 32, 97,114,101, 32,115,116,114,117, 99,116,117,114,101,100, 32,
-    97,115, 58, 13, 10, 48, 13, 10, 48, 32, 32, 32, 32, 60, 73,100,101,110,116,105,116,121, 32, 78,117,
-   109, 98,101,114, 62, 32, 32, 32, 32, 60, 73,103,110,111,114,101,100, 32, 45, 32, 99, 97,110, 32,117,
-   115,101, 32,102,111,114, 32,115,109, 97,108,108, 32, 99,111,109,109,101,110,116,115, 62, 13, 10, 48,
-    60,116, 97,114,103,101,116, 32,116,101,120,116, 62, 32, 60, 69,110,100,105,110,103, 32,115,101,113,
-   117,101,110, 99,101, 32,111,102, 32,110,111,110, 45,115,112, 97, 99,101, 32, 99,104, 97,114, 97, 99,
-   116,101,114,115, 62, 32, 60, 73,103,110,111,114,101,100, 32,117,110,116,105,108, 32,110,101,120,116,
-    32, 73, 68, 62, 13, 10, 48, 13, 10, 48, 13, 10, 48, 32, 84,104,101,121, 32, 97,114,101, 32,108,111,
-    97,100,101,100, 32, 97,115, 32,102,111,108,108,111,119,115, 58, 13, 10, 48, 13, 10, 48, 32, 49, 41,
-    32, 65,110,121, 32, 99,111,110,116,101,110,116, 32,105,115, 32,105,103,110,111,114,101,100, 32,117,
-   110,116,105,108, 32, 97, 32,115,112, 97, 99,101, 45,101,110, 99,108,111,115,101,100, 32,110,117,109,
-    98,101,114, 32,105,115, 32,100,101,116,101, 99,116,101,100, 46, 13, 10, 48, 13, 10, 48, 32, 50, 41,
-    32, 73,102, 32,116,104,101, 32,100,101,116,101, 99,116,101,100, 32,110,117,109, 98,101,114, 32,105,
-   115, 32, 48, 32,116,104,101,110, 32,116,104,101, 32,108,105,110,101, 32,116,104, 97,116, 32,102,111,
-   108,108,111,119,115, 32,105,115, 32,105,103,110,111,114,101,100, 46, 13, 10, 48, 13, 10, 48, 32, 51,
-    41, 32, 73,102, 32,116,104,101, 32,100,101,116,101, 99,116,101,100, 32,110,117,109, 98,101,114, 32,
-   105,115, 32, 49, 32,116,104,101,110, 32,116,104,101, 32,102,105,114,115,116, 32,115,101,113,117,101,
-   110, 99,101, 13, 10, 48, 32, 32, 32, 32,111,102, 32,110,111,110, 45,115,112, 97, 99,101, 32, 99,104,
-    97,114, 97, 99,116,101,114,115, 32,119,104,105, 99,104, 32,102,111,108,108,111,119,115, 32,105,115,
-    32,108,111, 97,100,101,100, 46, 13, 10, 48, 32, 32, 32, 32, 84,104,101,110, 32,119,101, 32,103,111,
-    32,116,111, 32,115,116,101,112, 32, 49, 32, 97,110,100, 32,100,101,116,101, 99,116, 32,116,104,101,
-    32,110,101,120,116, 32,110,117,109, 98,101,114, 46, 13, 10, 48, 13, 10, 48, 32, 52, 41, 32, 65,110,
-   121, 32, 99,111,110,116,101,110,116, 32,117,110,116,105,108, 32,116,104,101, 32,102,105,114,115,116,
-    32,101,110, 99,111,117,110,116,101,114, 32,111,102, 32, 97, 32,110,101,119,108,105,110,101, 32,105,
-   115, 32,105,103,110,111,114,101,100, 46, 13, 10, 48, 13, 10, 48, 32, 53, 41, 32, 73,102, 32,116,104,
-   101, 32,100,101,116,101, 99,116,101,100, 32,110,117,109, 98,101,114, 32,105,115, 32, 97, 32,118, 97,
-   108,105,100, 32, 73,100,101,110,116,105,116,121, 32, 78,117,109, 98,101,114, 13, 10, 48, 32, 32, 32,
-    32, 97,115, 32,115,112,101, 99,105,102,105,101,100, 32, 98,121, 32,116,104,101, 32,115,111,102,116,
-   119, 97,114,101, 32,112,114,111,118,105,100,101,114, 44, 32,116,104,101,110, 13, 10, 48, 32, 32, 32,
-    32,101,120,116,114, 97, 99,116,105,111,110, 32,115,116, 97,114,116,115, 32,102,114,111,109, 32,106,
-   117,115,116, 32, 97,102,116,101,114, 32,116,104,101, 32,110,101,119,108,105,110,101, 46, 13, 10, 48,
-    32, 32, 32, 32, 73,102, 32,110,111,116, 32,116,104,101,110, 32,119,101, 32,103,111, 32,116,111, 32,
-   115,116,101,112, 32, 49, 32, 97,110,100, 32,100,101,116,101, 99,116, 32,116,104,101, 32,110,101,120,
-   116, 32,110,117,109, 98,101,114, 46, 13, 10, 48, 13, 10, 48, 32, 53, 41, 32, 69,120,116,114, 97, 99,
-   116,105,111,110, 32,115,116,111,112,115, 32,119,104,101,110, 32,116,104,101, 32, 69,110,100, 95, 79,
-   102, 95, 84,101,120,116, 32,115,101,113,117,101,110, 99,101, 32,111,102, 32,110,111,110, 45,115,112,
-    97, 99,101, 13, 10, 48, 32, 32, 32, 32, 99,104, 97,114, 97, 99,116,101,114,115, 44, 32, 97,115, 32,
-   115,112,101, 99,105,102,105,101,100, 32, 98,121, 32, 73,110,100,101,110,116,121, 32, 78,117,109, 98,
-   101,114, 32, 49, 44, 32,105,115, 32,100,101,116,101, 99,116,101,100, 46, 13, 10, 48, 32, 32, 32, 32,
-    84,104,101,110, 32,119,101, 32,103,111, 32,116,111, 32,115,116,101,112, 32, 49, 32, 97,110,100, 32,
-   100,101,116,101, 99,116, 32,116,104,101, 32,110,101,120,116, 32,110,117,109, 98,101,114, 46, 13, 10,
-    48, 13, 10, 48, 32, 78,111,116,101, 58, 32, 84,104,101, 32,112,108, 97, 99,101, 45,104,111,108,100,
-   101,114,115, 32, 97,114,101, 32,115,112,101, 99,105,102,105,101,100, 32,117,115,105,110,103, 58, 32,
-    92, 60,110,117,109, 98,101,114, 62, 46, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32, 70,111,114, 32,101,
-   120, 97,109,112,108,101, 32, 92, 49, 32,109,101, 97,110,115, 58, 32,103,105,118,101, 32,115,112,101,
-    99,105, 97,108, 32,109,101, 97,110,105,110,103, 32,116,111, 32,116,104,101, 32,110,117,109, 98,101,
-   114, 32, 49, 46, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32, 84,104,105,115, 32,115,112,101, 99,105, 97,
-   108, 32,109,101, 97,110,105,110,103, 32,105,115, 58, 32,116,104,101, 32,112,108, 97, 99,101, 45,104,
-   111,108,100,101,114, 32,102,111,114, 32,116,104,101, 32,102,105,114,115,116, 32, 97,114,103,117,109,
-   101,110,116, 46, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32, 72,101,114,101, 32,116,104,101, 32, 49,115,
-   116, 44, 32, 50,110,100, 32, 97,110,100, 32, 51,114,100, 32, 97,114,103,117,109,101,110,116,115, 32,
-    97,114,101, 32,116,104,101, 32,102,105,108,101, 44, 32,108,105,110,101, 32, 97,110,100, 32, 99,111,
-   108,117,109,110, 46, 13, 10, 48, 13, 10, 48, 32, 78,111,116,101, 58, 32, 73,102, 32, 97,110, 32, 73,
-   100,101,110,116,105,116,121, 32, 78,117,109, 98,101,114, 32,105,115, 32,110,111,116, 32,102,111,117,
-   110,100, 32,116,104,101,110, 32,116,104,101, 32,100,101,102, 97,117,108,116, 32,115,101,116,116,105,
-   110,103, 44, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32, 97,115, 32, 98,117,105,108,116, 32,105,110, 32,
-   116,104,101, 32,115,111,102,116,119, 97,114,101, 44, 32,105,115, 32,117,115,101,100, 46, 32, 84,104,
-   105,115, 32,115,101,116,116,105,110,103, 32,105,115, 32, 97, 99,116,117, 97,108,108,121, 13, 10, 48,
-    32, 32, 32, 32, 32, 32, 32,116,104,101, 32,111,114,105,103,105,110, 97,108, 32,118,101,114,115,105,
-   111,110, 32,111,102, 32,116,104,105,115, 32,102,105,108,101, 32, 97,115, 32,103,105,118,101,110, 32,
-    98,121, 32,116,104,101, 32,115,111,102,116,119, 97,114,101, 46, 13, 10, 13, 10, 13, 10, 48, 32, 49,
-    32, 91, 91, 93, 93, 32, 69,110,100, 95, 79,102, 95, 84,101,120,116, 32, 44, 32,100,111, 32,110,111,
-   116, 32, 99,104, 97,110,103,101, 13, 10, 13, 10, 13, 10, 32, 49, 48, 32, 32, 67,111,109,112,111,110,
-   101,110,116, 95, 65,108,114,101, 97,100,121, 95, 68,101,102,105,110,101,100, 13, 10, 69,114,114,111,
-   114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58,
-    13, 10, 67,111,109,112,111,110,101,110,116, 32,105,115, 32, 97,108,114,101, 97,100,121, 32,100,101,
-   102,105,110,101,100, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 49, 49, 32, 32, 80, 97,114, 97,109,101,
-   116,101,114, 95, 86,115,116, 95, 73,115, 95, 73,110,118, 97,108,105,100, 13, 10, 69,114,114,111,114,
-    32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13,
-    10, 80, 97,114, 97,109,101,116,101,114, 32,115,116,114,117, 99,116,117,114,101, 32,109,117,115,116,
-    32, 98,101, 32, 39, 92, 53, 39, 32,110,111,116, 32, 39, 92, 54, 39, 46, 91, 91, 93, 93, 13, 10, 13,
-    10, 32, 49, 50, 32, 32, 82,101,115,117,108,116, 95, 86,115,116, 95, 73,115, 95, 73,110,118, 97,108,
-   105,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,
-   111,110, 32, 39, 92, 52, 39, 58, 13, 10, 82,101,115,117,108,116, 32,115,116,114,117, 99,116,117,114,
-   101, 32,109,117,115,116, 32, 98,101, 32, 39, 92, 53, 39, 32,110,111,116, 32, 39, 92, 54, 39, 46, 91,
-    91, 93, 93, 13, 10, 13, 10, 13, 10, 32, 50, 49, 32, 32, 73,115, 78,111,116, 95, 86, 97,108,117,101,
-    83,116,114,117, 99,116,117,114,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116,
-    32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 58, 32,109,117,115,116, 32, 98,101,
-    32, 97, 32, 98,114, 97, 99,107,101,116, 44, 32, 99,111,109,109, 97, 32,111,114, 32,110, 97,109,101,
-    46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 50, 50, 32, 32, 73,110,118, 97,108,105,100, 95, 69,120,112,
-   114,101,115,115,105,111,110, 95, 69,110,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32,
-    97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 73,110,118, 97,108,105,100, 32,101,110,100, 32,111,102,
-    32,101,120,112,114,101,115,115,105,111,110, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 50, 51, 32, 32,
-    73,110,118, 97,108,105,100, 95, 69,120,112,114,101,115,115,105,111,110, 95, 83,121,110,116, 97,120,
-    13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10,
-    73,110,118, 97,108,105,100, 32,115,121,110,116, 97,120, 32,100,117,101, 32,116,111, 32, 39, 92, 52,
-    39, 46, 91, 91, 93, 93, 13, 10, 13, 10, 13, 10, 32, 51, 48, 32, 32, 66,114, 97, 99,107,101,116, 95,
-    77, 97,116, 99,104, 95, 73,110,118, 97,108,105,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92,
-    49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 58, 32,101,120,112,
-   101, 99,116, 32, 39, 92, 53, 39, 32,105,110,115,116,101, 97,100, 46, 91, 91, 93, 93, 13, 10, 13, 10,
-    32, 51, 49, 32, 32, 66,114, 97, 99,107,101,116, 95, 77, 97,116, 99,104, 95, 78,111,110,101, 13, 10,
-    69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 70,111,
-   117,110,100, 32, 39, 92, 52, 39, 32,119,105,116,104,111,117,116, 32,109, 97,116, 99,104,105,110,103,
-    32, 39, 92, 53, 39, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 51, 50, 32, 32, 76, 97, 99,107,105,110,
-   103, 95, 66,114, 97, 99,107,101,116, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116,
-    32, 92, 50, 58, 92, 51, 58, 13, 10, 69,120,112,101, 99,116, 32, 92, 53, 32, 99,108,111,115,101,100,
-    32, 98,114, 97, 99,107,101,116, 32, 97,116, 32,101,110,100, 32,111,102, 32,101,120,112,114,101,115,
-   115,105,111,110, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 51, 51, 32, 32, 76, 97, 99,107,105,110,103,
-    95, 66,114, 97, 99,107,101,116,115, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116,
-    32, 92, 50, 58, 92, 51, 58, 13, 10, 69,120,112,101, 99,116, 32, 92, 53, 32, 99,108,111,115,101,100,
-    32, 98,114, 97, 99,107,101,116,115, 32, 97,116, 32,101,110,100, 32,111,102, 32,101,120,112,114,101,
-   115,115,105,111,110, 46, 91, 91, 93, 93, 13, 10, 13, 10, 13, 10, 32, 52, 48, 32, 32, 73,115, 78,111,
-   116, 95, 78,117,109, 98,101,114, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32,
-    92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 58, 32,110,111,116, 32, 97, 32,118, 97,
-   108,105,100, 32,110,117,109, 98,101,114, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 52, 49, 32, 32, 73,
-   115, 78,111,116, 95, 67,111,109,112,111,110,101,110,116, 13, 10, 69,114,114,111,114, 32,105,110, 32,
-    92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 67, 97,110,110,111,116, 32,102,105,110,100,
-    32,118, 97,114,105, 97, 98,108,101, 32,119,105,116,104, 32,110, 97,109,101, 32, 39, 92, 52, 39, 32,
-    46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 52, 50, 32, 32, 68,101, 97,100,108,111, 99,107, 95, 70,111,
-   117,110,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51,
-    58, 13, 10, 68,101, 97,100,108,111, 99,107, 32,111,110, 32,118, 97,114,105, 97, 98,108,101, 32, 39,
-    92, 52, 39, 46, 91, 91, 93, 93, 13, 10, 13, 10, 13, 10, 32, 53, 48, 32, 32, 73,110,118, 97,108,105,
-   100, 95, 79,112,101,114, 97,110,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116,
-    32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13, 10, 67, 97,110,110,111,116, 32,101,
-   118, 97,108,117, 97,116,101, 32,111,110, 32,111,112,101,114, 97,110,100, 32,102,114,111,109, 32,111,
-   112,101,114, 97,116,105,111,110, 32, 39, 92, 53, 39, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 49,
-    32, 32, 79,112,101,114, 97,110,100,115, 95, 68,111, 78,111,116, 95, 77, 97,116, 99,104, 13, 10, 69,
-   114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92,
-    52, 39, 58, 13, 10, 76,101,102,116, 32, 97,110,100, 32,114,105,103,104,116, 32,111,112,101,114, 97,
-   110,100,115, 32,100,111, 32,110,111,116, 32,109, 97,116, 99,104, 46, 13, 10, 76,101,102,116, 32,115,
-   112, 97,110, 32,105,115, 32, 92, 53, 44, 32,114,105,103,104,116, 32,115,112, 97,110, 32,105,115, 32,
-    92, 54, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 50, 32, 32, 79,112,101,114, 97,110,100, 95, 73,
-   115, 78,111,116, 95, 77, 97,116,114,105,120, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32,
-    97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 58, 32,111,112,101,114, 97,
-   110,100, 32,105,115, 32, 39, 92, 53, 39, 44, 32,110,111,116, 32, 97, 32,118,101, 99,116,111,114, 32,
-   110,111,114, 32, 97, 32,109, 97,116,114,105,120, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 51, 32,
-    32, 65,114,103,117,109,101,110,116, 95,118,115, 95, 80, 97,114, 97,109,101,116,101,114, 13, 10, 69,
-   114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92,
-    52, 39, 58, 13, 10, 70,117,110, 99,116,105,111,110, 32, 97,114,103,117,109,101,110,116, 32,105,115,
-    32, 39, 92, 53, 39, 32, 98,117,116, 32,112, 97,114, 97,109,101,116,101,114, 32,105,115, 13, 10, 39,
-    92, 54, 39, 44, 32,116,104,101, 32,118, 97,108,117,101, 32,115,116,114,117, 99,116,117,114,101,115,
-    32,100,111, 32,110,111,116, 32,109, 97,116, 99,104, 46, 91, 91, 93, 93, 13, 10, 13, 10, 13, 10, 32,
-    53, 52, 32, 32, 73,110,100,101,120,105,110,103, 95, 83,105,110,103,108,101, 95, 78,117,109, 98,101,
-   114, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,
-   110, 32, 39, 92, 52, 39, 58, 13, 10, 67, 97,110,110,111,116, 32,105,110,100,101,120, 32, 97, 32,115,
-   105,110,103,108,101, 32,118, 97,108,117,101, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 53, 32, 32,
-    73,110,100,101,120, 95, 79,117,116, 79,102, 95, 82, 97,110,103,101, 13, 10, 69,114,114,111,114, 32,
-   105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13, 10,
-    73,110,100,101,120,105,110,103, 32,110,117,109, 98,101,114, 32, 61, 32, 92, 53, 32,105,115, 32,110,
-   111,116, 32,105,110, 32,114, 97,110,103,101, 32, 91, 48, 44, 92, 54, 93, 46, 91, 91, 93, 93, 13, 10,
-    13, 10, 32, 53, 54, 32, 32, 86,101, 99,116,111,114, 95, 83,116, 97,114,116,105,110,103, 95, 86, 97,
-   108,117,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51,
-    32,111,110, 32, 39, 92, 52, 39, 58, 13, 10, 83,116, 97,114,116,105,110,103, 32,118, 97,108,117,101,
-    32,109,117,115,116, 32, 98,101, 32, 97, 32,115,105,110,103,108,101, 32,110,117,109, 98,101,114, 46,
-    91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 55, 32, 32, 86,101, 99,116,111,114, 95, 83,116,111,112,112,
-   105,110,103, 95, 86, 97,108,117,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116,
-    32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13, 10, 83,116,111,112,112,105,110,103,
-    32,118, 97,108,117,101, 32,109,117,115,116, 32, 98,101, 32, 97, 32,115,105,110,103,108,101, 32,110,
-   117,109, 98,101,114, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 53, 56, 32, 32, 86,101, 99,116,111,114,
-    95, 77,105,100,100,108,101, 95, 86, 97,108,117,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92,
-    49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13, 10, 84,104,101, 32,
-   115,117,109, 32,111,102, 32,116,104,101, 32,109,105,100,100,108,101, 32, 97,114,103,117,109,101,110,
-   116, 32,109,117,115,116, 32, 98,101, 32,110,111,110, 45,122,101,114,111, 46, 91, 91, 93, 93, 13, 10,
-    13, 10, 32, 53, 57, 32, 32, 86,101, 99,116,111,114, 95, 76,101,110,103,116,104, 95, 73,110,118, 97,
-   108,105,100, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51,
-    32,111,110, 32, 39, 92, 52, 39, 58, 13, 10, 76,101,110,103,116,104, 32,111,102, 32,118,101, 99,116,
-   111,114, 32,109,117,115,116, 32, 98,101, 32,118, 97,108,105,100, 32, 97,110,100, 32,103,114,101, 97,
-   116,101,114, 32,116,104, 97,110, 32, 48, 46, 91, 91, 93, 93, 13, 10, 13, 10, 13, 10, 32, 55, 48, 32,
-    32, 76,101,102,116, 95, 73,115, 78,111,116, 95, 77, 97,116,114,105,120, 13, 10, 69,114,114,111,114,
-    32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39,
-    58, 32,108,101,102,116, 32,111,112,101,114, 97,110,100, 32,105,115, 32, 39, 92, 53, 39, 44, 32,110,
-   111,116, 32, 97, 32,118,101, 99,116,111,114, 32,110,111,114, 32, 97, 32,109, 97,116,114,105,120, 46,
-    13, 10, 73,102, 32,111,112,101,114, 97,116,105,111,110, 32,111,110, 32, 99,111,114,114,101,115,112,
-   111,110,100,105,110,103, 32,101,108,101,109,101,110,116,115, 32,116,104,101,110, 32,117,115,101, 32,
-    39, 92, 54, 39, 32,105,110,115,116,101, 97,100, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 55, 49, 32,
-    32, 82,105,103,104,116, 95, 73,115, 78,111,116, 95, 77, 97,116,114,105,120, 13, 10, 69,114,114,111,
-   114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52,
-    39, 58, 32,114,105,103,104,116, 32,111,112,101,114, 97,110,100, 32,105,115, 32, 39, 92, 53, 39, 44,
-    32,110,111,116, 32, 97, 32,118,101, 99,116,111,114, 32,110,111,114, 32, 97, 32,109, 97,116,114,105,
-   120, 46, 13, 10, 73,102, 32,111,112,101,114, 97,116,105,111,110, 32,111,110, 32, 99,111,114,114,101,
-   115,112,111,110,100,105,110,103, 32,101,108,101,109,101,110,116,115, 32,116,104,101,110, 32,117,115,
-   101, 32, 39, 92, 54, 39, 32,105,110,115,116,101, 97,100, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 55,
-    50, 32, 32, 77, 97,116,114,105,120, 77,117,108,116, 95, 73,115, 73,110,118, 97,108,105,100, 13, 10,
-    69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39,
-    92, 52, 39, 58, 13, 10, 77, 97,116,114,105,120, 32,109,117,108,116,105,112,108,105, 99, 97,116,105,
-   111,110, 32, 40, 92, 53, 32, 98,121, 32, 92, 54, 41, 40, 92, 55, 32, 98,121, 32, 92, 56, 41, 32,105,
-   115, 32,105,110,118, 97,108,105,100, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 55, 51, 32, 32, 77, 97,
-   116,114,105,120, 95, 73,115, 78,111,116, 95, 78, 98,121, 78, 13, 10, 69,114,114,111,114, 32,105,110,
-    32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 58, 32,111,
-   112,101,114, 97,110,100, 32,105,115, 32, 97, 32, 40, 92, 53, 32, 98,121, 32, 92, 54, 41, 32,109, 97,
-   116,114,105,120, 46, 13, 10, 73,116, 32,109,117,115,116, 32, 98,101, 32, 97,110, 32, 40,110, 32, 98,
-   121, 32,110, 41, 32,109, 97,116,114,105,120, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 55, 52, 32, 32,
-    76,101,102,116, 95, 73,115, 78,111,116, 95, 83,105,110,103,108,101, 13, 10, 69,114,114,111,114, 32,
-   105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39, 58, 13, 10,
-    76,101,102,116, 32,111,112,101,114, 97,110,100, 32,109,117,115,116, 32,104, 97,118,101, 32,115,112,
-    97,110, 32, 61, 32, 49, 32,110,111,116, 32, 92, 53, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 55, 53,
-    32, 32, 82,105,103,104,116, 95, 73,115, 78,111,116, 95, 83,105,110,103,108,101, 13, 10, 69,114,114,
-   111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 32,111,110, 32, 39, 92, 52, 39,
-    58, 13, 10, 82,105,103,104,116, 32,111,112,101,114, 97,110,100, 32,109,117,115,116, 32,104, 97,118,
-   101, 32,115,112, 97,110, 32, 61, 32, 49, 32,110,111,116, 32, 92, 53, 46, 91, 91, 93, 93, 13, 10, 13,
-    10, 13, 10, 32, 56, 48, 32, 32, 69,120,112,101, 99,116, 95, 81,117,101,115,116,105,111,110, 95, 66,
-   101,102,111,114,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58,
-    92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 44, 32,101,120,112,101, 99,116, 32, 39, 63, 39, 32,
-    98,101,102,111,114,101, 32,105,116, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 56, 49, 32, 32, 69,120,
-   112,101, 99,116, 95, 67,104,111,105, 99,101, 95, 65,102,116,101,114, 13, 10, 69,114,114,111,114, 32,
-   105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58, 92, 51, 58, 13, 10, 79,110, 32, 39, 92, 52, 39, 44,
-    32,101,120,112,101, 99,116, 32, 39, 58, 39, 32, 97,102,116,101,114, 32,105,116, 46, 91, 91, 93, 93,
-    13, 10, 13, 10, 32, 56, 50, 32, 67,111,110,100,105,116,105,111,110, 95, 73,115, 78,111,116, 95, 83,
-   105,110,103,108,101, 13, 10, 69,114,114,111,114, 32,105,110, 32, 92, 49, 32, 97,116, 32, 92, 50, 58,
-    92, 51, 32,111,110, 32, 92, 52, 58, 13, 10, 67,111,110,100,105,116,105,111,110, 32,109,117,115,116,
-    32,104, 97,118,101, 32,115,112, 97,110, 32, 61, 32, 49, 32,110,111,116, 32, 92, 53, 46, 91, 91, 93,
-    93, 13, 10, 13, 10, 13, 10, 32, 57, 48, 32, 32, 68,105,118,105,115,105,111,110, 95, 66,121, 95, 90,
-   101,114,111, 13, 10,100,105,118,105,115,105,111,110, 32, 98,121, 32,122,101,114,111, 46, 91, 91, 93,
-    93, 13, 10, 13, 10, 32, 57, 49, 32, 32, 78,111,116, 95, 79,110, 95, 67,111,109,112,108,101,120, 95,
-    78,117,109, 98,101,114, 13, 10,111,112,101,114, 97,110,100, 32,118, 97,108,117,101, 32,116,121,112,
-   101, 32,105,115, 32,110,111,116, 32,115,117,112,112,111,114,116,101,100, 46, 91, 91, 93, 93, 13, 10,
-    13, 10, 32, 57, 50, 32, 32, 79,110,108,121, 95, 79,110, 95, 73,110,116,101,103,101,114, 95, 78,117,
-   109, 98,101,114, 13, 10,111,112,101,114, 97,110,100, 32,109,117,115,116, 32,111,110,108,121, 32, 98,
-   101, 32, 97,110, 32,105,110,116,101,103,101,114, 46, 91, 91, 93, 93, 13, 10, 13, 10, 32, 57, 51, 32,
-    32, 65,114,103,117,109,101,110,116, 95, 79,117,116, 79,102, 95, 68,111,109, 97,105,110, 13, 10, 97,
-   114,103,117,109,101,110,116, 32,105,115, 32,111,117,116, 32,111,102, 32,102,117,110, 99,116,105,111,
-   110, 32,100,111,109, 97,105,110, 46, 91, 91, 93, 93, 13, 10, 13, 10, 0
-};
+   L"\r\n"
+    " 10  Cannot_Find_Component\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Cannot find component from %s.[[]]\r\n"
+    "\r\n"
+    " 11  Component_Already_Defined\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Component is already defined.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 21  IsNot_ValueStructure\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Must be a bracket, comma or name.[[]]\r\n"
+    "\r\n"
+    " 22  Invalid_Expression_End\r\n"
+    "Error at (%2,%3) in %4:\r\n"
+    "Invalid end of expression.[[]]\r\n"
+    "\r\n"
+    " 23  Invalid_Expression_Syntax\r\n"
+    "Error at (%2,%3) in %4:\r\n"
+    "Invalid syntax due to '%1'.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 30  Bracket_Match_Invalid\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Expected '%5' instead.[[]]\r\n"
+    "\r\n"
+    " 31  Bracket_Match_None\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Does not have a matching '%5'.[[]]\r\n"
+    "\r\n"
+    " 32  Lacking_Bracket\r\n"
+    "Error at (%2,%3) in %4:\r\n"
+    "Expect %s closed bracket%s at end of expression.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 51  Operands_DoNot_Match\r\n"
+    "Left and right operands do not match.[[]]\r\n"
+    "\r\n"
+    " 52  Operand_IsNot_Matrix\r\n"
+    "Operand is not a vector nor a matrix.[[]]\r\n"
+    "\r\n"
+    " 53  Argument_vs_Parameter\r\n"
+    "Argument structure is different from parameter structure.\r\n"
+    "Argument structure is %s instead of %s.[[]]\r\n"
+    "\r\n"
+    " 54  ResultSt_vs_Expected\r\n"
+    "Result structure is different from expected.\r\n"
+    "Result structure is %s not %s.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 55  Index_OutOf_Range\r\n"
+    "Indexing number = %s is not in range [0,%s].[[]]\r\n"
+    "\r\n"
+    " 56  Vector_Middle_Value\r\n"
+    "The sum of the middle argument must be non-zero.[[]]\r\n"
+    "\r\n"
+    " 57  Vector_Length_Invalid\r\n"
+    "Vector length must be a single integer > 0.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 70  Left_IsNot_Matrix\r\n"
+    "Left operand is not a vector nor a matrix.\r\n"
+    "If per-value operation then use '%s' instead.[[]]\r\n"
+    "\r\n"
+    " 71  Right_IsNot_Matrix\r\n"
+    "Right operand is not a vector nor a matrix.\r\n"
+    "If per-value operation then use '%s' instead.[[]]\r\n"
+    "\r\n"
+    " 72  MatrixMult_IsInvalid\r\n"
+    "Matrix multiplication (%s by %s)(%s by %s) is invalid.[[]]\r\n"
+    "\r\n"
+    " 73  Matrix_IsNot_NbyN\r\n"
+    "Operand is a (%s by %s) matrix, not an (n by n) matrix.[[]]\r\n"
+    "\r\n"
+    " 74  Left_IsNot_Single\r\n"
+    "Left operand must be a single value.[[]]\r\n"
+    "\r\n"
+    " 75  Right_IsNot_Single\r\n"
+    "Right operand must be a single value.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 80  Expect_Question_Before\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Expected '?' before it.[[]]\r\n"
+    "\r\n"
+    " 81  Expect_Choice_After\r\n"
+    "Error on '%1' at (%2,%3) in %4:\r\n"
+    "Expected ':' after it.[[]]\r\n"
+    "\r\n"
+    " 82 Condition_IsNot_Single\r\n"
+    "Condition must evalute to a single value.[[]]\r\n"
+    "\r\n"
+    "\r\n"
+    " 90  Division_By_Zero\r\n"
+    "Division by zero.[[]]\r\n"
+    "\r\n"
+    " 91  Operand_Not_Supported\r\n"
+    "Operand value type is not supported.[[]]\r\n"
+    "\r\n"
+    " 92  Only_On_Integer_Number\r\n"
+    "Operand must be an integer.[[]]\r\n"
+    "\r\n"
+    " 93  Argument_OutOf_Domain\r\n"
+    "Argument is out of domain.[[]]\r\n"
+    "\r\n";
 
-
+/*
+0 Below are texts 'with no space' that are used by the software.
+0
+0 They are structured as:
+0
+0 <ID Number> <non-space-separated characters> <ignored until next ID>
+0
+0
+0 They are loaded as follows:
+0
+0 1) Any content is ignored until a space-enclosed number is detected.
+0
+0 2) If the detected number is 0 then the line that follows is ignored.
+0
+0 3) If the detected number is a valid Identity Number,
+0    as specified by the software provider, then the first
+0    sequence of non-space characters that follows is loaded.
+0
+0 4) Then we go to step 1 and detect the next number.
+0
+0 Note: Some characters like the decimal point '.' are
+0       specified to be (and must remain) single characters.
+0
+0 Note: The names that have alphabet characters, like "sin"
+0       must not have non-alphabet characters, like "=+*"
+0
+0 Note: If an Identity Number is not found then the default setting,
+0       as built in the software, is used. This setting is actually
+0       the original version of this file as given by the software.
+*/
 static const wchar default_twsf_ENGLISH[] =
+   L"\r\n"
+    " 1 (        OpenedBracket1 , do not change this\r\n"
+    " 2 {        OpenedBracket2 , do not change this\r\n"
+    " 3 [        OpenedBracket3 , do not change this\r\n"
+    " 4 )        ClosedBracket1 , do not change this\r\n"
+    " 5 }        ClosedBracket2 , do not change this\r\n"
+    " 6 ]        ClosedBracket3 , do not change this\r\n"
+    "\r\n"
+    " 10 ;       EndOfStatement , do not change this\r\n"
+    " 11 ,       CommaSeparator , do not change this\r\n"
+    " 12 .,      Concatenate    , do not change this\r\n"
+    " 13 :=      Replacement    , do not change this\r\n"
+    " 14 ?       ConditionAsk   , do not change this\r\n"
+    " 15 :       ConditionChoose, do not change this\r\n"
+    " 16 .       DecimalPoint   , do not change this\r\n"
+    " 17 \"       DoubleQuote    , do not change this\r\n"
+    "\r\n"
+    " 20 or      Logical_OR\r\n"
+    " 21 and     Logical_AND\r\n"
+    " 22 not     Logical_NOT\r\n"
+    " 23 mod     Oper_mod\r\n"
+    "\r\n"
+    " 30 =       Assignment     , do not change this\r\n"
+    " 31 ==      EqualTo\r\n"
+    " 32 ===     SameAs\r\n"
+    " 33 !==     NotSame\r\n"
+    " 34 !=      NotEqual\r\n"
+    " 35 <       LessThan\r\n"
+    " 36 >       GreaterThan\r\n"
+    " 37 <=      LessOrEqual\r\n"
+    " 38 >=      GreaterOrEqual\r\n"
+    "\r\n"
+    " 40 +       Oper_pos   , do not change this\r\n"
+    " 41 -       Oper_neg   , do not change this\r\n"
+    " 42 +       Oper_add   , do not change this\r\n"
+    " 43 -       Oper_sub   , do not change this\r\n"
+    "\r\n"
+    " 50 *       Oper_mul1\r\n"
+    " 51 .*      Oper_mul2\r\n"
+    " 52 /       Oper_div1\r\n"
+    " 53 //      Oper_divI\r\n"
+    " 54 ./      Oper_div2\r\n"
+    " 55 ^       Oper_pow1\r\n"
+    " 56 .^      Oper_pow2\r\n"
+    "\r\n"
+    " 60 |       Bitwise_OR\r\n"
+    " 61 ^|      Bitwise_XOR\r\n"
+    " 62 &       Bitwise_AND\r\n"
+    " 63 ~       Bitwise_NOT\r\n"
+    " 64 >>      Shift_Right\r\n"
+    " 65 <<      Shift_Left\r\n"
+    "\r\n"
+    " 70 •       Oper_dotproduct \\u2022\r\n"
+    " 71 ^T      Oper_transpose\r\n"
+    "\r\n"
+    " 79 this        \r\n"
+    " 80 true        \r\n"
+    " 81 false       \r\n"
+    " 82 e           \r\n"
+    " 83 pi          \r\n"
+    " 84 i           \r\n"
+    "\r\n"
+    " 90 factorial   \r\n"
+    " 91 fullfloor   \r\n"
+    " 92 getprimes   \r\n"
+    " 93 srand       \r\n"
+    " 94 rand        \r\n"
+    "\r\n"
+    " 95 gcd         \r\n"
+    " 96 ilog        \r\n"
+    " 97 isqrt       \r\n"
+    " 98 floor       \r\n"
+    " 99 ceil        \r\n"
+    "\r\n"
+    " 100 sqrt       \r\n"
+    " 101 cbrt       \r\n"
+    " 102 exp        \r\n"
+    " 103 log        \r\n"
+    "\r\n"
+    " 110 cos        \r\n"
+    " 111 sin        \r\n"
+    " 112 tan        \r\n"
+    " 113 acos       \r\n"
+    " 114 asin       \r\n"
+    " 115 atan       \r\n"
+    "\r\n"
+    " 116 cosh       \r\n"
+    " 117 sinh       \r\n"
+    " 118 tanh       \r\n"
+    " 119 acosh      \r\n"
+    " 120 asinh      \r\n"
+    " 121 atanh      \r\n"
+    "\r\n"
+    " 122 cabs       \r\n"
+    " 123 carg       \r\n"
+    " 124 real       \r\n"
+    " 125 imag       \r\n"
+    " 126 conj       \r\n"
+    " 127 proj       \r\n"
+    "\r\n"
+    " 140 size       \r\n"
+    " 141 span       \r\n"
+    " 142 sum        \r\n"
+    " 143 max        \r\n"
+    " 144 min        \r\n"
+    "\r\n"
+    " 150 vector     \r\n"
+    " 151 range      \r\n"
+    " 152 try        \r\n"
+    "\r\n"
+    " 160 tostr      \r\n"
+    " 161 tonum      \r\n"
+    " 162 torat      \r\n"
+    " 163 toflt      \r\n"
+    "\r\n"
+    " 170 eval       \r\n"
+    " 171 call       \r\n"
+    " 172 print      \r\n"
+    " 173 strlen     \r\n"
+    "\r\n";
+
+static const wchar default_twst_FRENCH[] = L"";
+static const wchar default_twsf_FRENCH[] = L"";
+
+
+static const_Str2 default_twsf (enum RFET_LANGUAGE language)
 {
-    48, 32, 84,104,105,115, 32,102,105,108,101, 32, 99,111,110,116, 97,105,110,115, 32,116,101,120,116,
-   115, 44, 32,119,105,116,104, 32,110,111, 32,115,112, 97, 99,101, 44, 32,116,104, 97,116, 32, 97,114,
-   101, 32,108,111, 97,100,101,100, 32, 97,110,100, 32,117,115,101,100, 46, 13, 10, 48, 13, 10, 48, 32,
-    84,104,101,121, 32, 97,114,101, 32,115,116,114,117, 99,116,117,114,101,100, 32, 97,115, 58, 13, 10,
-    48, 13, 10, 48, 32, 60, 73, 68, 32, 78,117,109, 98,101,114, 62, 32, 60,110,111,110, 95,115,112, 97,
-    99,101, 95,115,101,112, 97,114, 97,116,101,100, 95, 99,104, 97,114, 97, 99,116,101,114,115, 62, 32,
-    60, 73,103,110,111,114,101,100, 32,117,110,116,105,108, 32,110,101,120,116, 32, 73, 68, 62, 13, 10,
-    48, 13, 10, 48, 13, 10, 48, 32, 84,104,101,121, 32, 97,114,101, 32,108,111, 97,100,101,100, 32, 97,
-   115, 32,102,111,108,108,111,119,115, 58, 13, 10, 48, 13, 10, 48, 32, 49, 41, 32, 65,110,121, 32, 99,
-   111,110,116,101,110,116, 32,105,115, 32,105,103,110,111,114,101,100, 32,117,110,116,105,108, 32, 97,
-    32,115,112, 97, 99,101, 45,101,110, 99,108,111,115,101,100, 32,110,117,109, 98,101,114, 32,105,115,
-    32,100,101,116,101, 99,116,101,100, 46, 13, 10, 48, 13, 10, 48, 32, 50, 41, 32, 73,102, 32,116,104,
-   101, 32,100,101,116,101, 99,116,101,100, 32,110,117,109, 98,101,114, 32,105,115, 32, 48, 32,116,104,
-   101,110, 32,116,104,101, 32,108,105,110,101, 32,116,104, 97,116, 32,102,111,108,108,111,119,115, 32,
-   105,115, 32,105,103,110,111,114,101,100, 46, 13, 10, 48, 13, 10, 48, 32, 51, 41, 32, 73,102, 32,116,
-   104,101, 32,100,101,116,101, 99,116,101,100, 32,110,117,109, 98,101,114, 32,105,115, 32, 97, 32,118,
-    97,108,105,100, 32, 73,100,101,110,116,105,116,121, 32, 78,117,109, 98,101,114, 44, 13, 10, 48, 32,
-    32, 32, 32, 97,115, 32,115,112,101, 99,105,102,105,101,100, 32, 98,121, 32,116,104,101, 32,115,111,
-   102,116,119, 97,114,101, 32,112,114,111,118,105,100,101,114, 44, 32,116,104,101,110, 32,116,104,101,
-    32,102,105,114,115,116, 13, 10, 48, 32, 32, 32, 32,115,101,113,117,101,110, 99,101, 32,111,102, 32,
-   110,111,110, 45,115,112, 97, 99,101, 32, 99,104, 97,114, 97, 99,116,101,114,115, 32,116,104, 97,116,
-    32,102,111,108,108,111,119,115, 32,105,115, 32,108,111, 97,100,101,100, 46, 13, 10, 48, 13, 10, 48,
-    32, 52, 41, 32, 84,104,101,110, 32,119,101, 32,103,111, 32,116,111, 32,115,116,101,112, 32, 49, 32,
-    97,110,100, 32,100,101,116,101, 99,116, 32,116,104,101, 32,110,101,120,116, 32,110,117,109, 98,101,
-   114, 46, 13, 10, 48, 13, 10, 48, 32, 78,111,116,101, 58, 32, 83,111,109,101, 32, 99,104, 97,114, 97,
-    99,116,101,114,115, 32,108,105,107,101, 32,116,104,101, 32,100,101, 99,105,109, 97,108, 32,112,111,
-   105,110,116, 32, 39, 46, 39, 32, 97,114,101, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32,115,112,101, 99,
-   105,102,105,101,100, 32,116,111, 32, 98,101, 32, 40, 97,110,100, 32,109,117,115,116, 32,114,101,109,
-    97,105,110, 41, 32,115,105,110,103,108,101, 32, 99,104, 97,114, 97, 99,116,101,114,115, 46, 13, 10,
-    48, 13, 10, 48, 32, 78,111,116,101, 58, 32, 84,104,101, 32,110, 97,109,101,115, 32,116,104, 97,116,
-    32,104, 97,118,101, 32, 97,108,112,104, 97, 98,101,116, 32, 99,104, 97,114, 97, 99,116,101,114,115,
-    44, 32,108,105,107,101, 32, 34,115,105,110, 34, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32,109,117,115,
-   116, 32,110,111,116, 32,104, 97,118,101, 32,110,111,110, 45, 97,108,112,104, 97, 98,101,116, 32, 99,
-   104, 97,114, 97, 99,116,101,114,115, 44, 32,108,105,107,101, 32, 34, 61, 43, 42, 34, 13, 10, 48, 13,
-    10, 48, 32, 78,111,116,101, 58, 32, 73,102, 32, 97,110, 32, 73,100,101,110,116,105,116,121, 32, 78,
-   117,109, 98,101,114, 32,105,115, 32,110,111,116, 32,102,111,117,110,100, 32,116,104,101,110, 32,116,
-   104,101, 32,100,101,102, 97,117,108,116, 32,115,101,116,116,105,110,103, 44, 13, 10, 48, 32, 32, 32,
-    32, 32, 32, 32, 97,115, 32, 98,117,105,108,116, 32,105,110, 32,116,104,101, 32,115,111,102,116,119,
-    97,114,101, 44, 32,105,115, 32,117,115,101,100, 46, 32, 84,104,105,115, 32,115,101,116,116,105,110,
-   103, 32,105,115, 32, 97, 99,116,117, 97,108,108,121, 13, 10, 48, 32, 32, 32, 32, 32, 32, 32,116,104,
-   101, 32,111,114,105,103,105,110, 97,108, 32,118,101,114,115,105,111,110, 32,111,102, 32,116,104,105,
-   115, 32,102,105,108,101, 32, 97,115, 32,103,105,118,101,110, 32, 98,121, 32,116,104,101, 32,115,111,
-   102,116,119, 97,114,101, 46, 13, 10, 13, 10, 32, 49, 32, 40, 32, 32, 32, 32, 32, 32, 32, 32, 79,112,
-   101,110,101,100, 95, 66,114, 97, 99,107,101,116, 95, 49, 32, 44, 32,100,111, 32,110,111,116, 32, 99,
-   104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 50, 32,123, 32, 32, 32, 32, 32, 32, 32, 32, 79,
-   112,101,110,101,100, 95, 66,114, 97, 99,107,101,116, 95, 50, 32, 44, 32,100,111, 32,110,111,116, 32,
-    99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 51, 32, 91, 32, 32, 32, 32, 32, 32, 32, 32,
-    79,112,101,110,101,100, 95, 66,114, 97, 99,107,101,116, 95, 51, 32, 44, 32,100,111, 32,110,111,116,
-    32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 52, 32, 41, 32, 32, 32, 32, 32, 32, 32,
-    32, 67,108,111,115,101,100, 95, 66,114, 97, 99,107,101,116, 95, 49, 32, 44, 32,100,111, 32,110,111,
-   116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 53, 32,125, 32, 32, 32, 32, 32, 32,
-    32, 32, 67,108,111,115,101,100, 95, 66,114, 97, 99,107,101,116, 95, 50, 32, 44, 32,100,111, 32,110,
-   111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 54, 32, 93, 32, 32, 32, 32, 32,
-    32, 32, 32, 67,108,111,115,101,100, 95, 66,114, 97, 99,107,101,116, 95, 51, 32, 44, 32,100,111, 32,
-   110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 13, 10, 32, 49, 48, 32, 46, 32,
-    32, 32, 32, 32, 32, 32, 68,101, 99,105,109, 97,108, 80,111,105,110,116, 32, 32, 32, 32, 32, 44, 32,
-   100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 49, 49, 32, 44,
-    32, 32, 32, 32, 32, 32, 32, 67,111,109,109, 97, 83,101,112, 97,114, 97,116,111,114, 32, 32, 32, 44,
-    32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 49, 50, 32,
-    59, 32, 32, 32, 32, 32, 32, 32, 69,110,100, 79,102, 83,116, 97,116,101,109,101,110,116, 32, 32, 32,
-    44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 49, 51,
-    32, 34, 32, 32, 32, 32, 32, 32, 32, 68,111,117, 98,108,101, 81,117,111,116,101, 32, 32, 32, 32, 32,
-    32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 32, 49,
-    52, 32, 61, 32, 32, 32, 32, 32, 32, 32, 65,115,115,105,103,110,109,101,110,116, 32, 32, 32, 32, 32,
-    32, 32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115, 13, 10, 13,
-    10, 32, 50, 48, 32, 46, 44, 32, 32, 32, 32, 32, 32, 67,111,110, 99, 97,116,101,110, 97,116,101, 32,
-    32, 32, 32, 32, 32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,115,
-    13, 10, 32, 50, 49, 32, 58, 61, 32, 32, 32, 32, 32, 32, 82,101,112,108, 97, 99,101,109,101,110,116,
-    32, 32, 32, 32, 32, 32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,105,
-   115, 13, 10, 32, 50, 50, 32, 63, 32, 32, 32, 32, 32, 32, 32, 67,111,110,100,105,116,105,111,110, 65,
-   115,107, 32, 32, 32, 32, 32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,104,
-   105,115, 13, 10, 32, 50, 51, 32, 58, 32, 32, 32, 32, 32, 32, 32, 67,111,110,100,105,116,105,111,110,
-    67,104,111,111,115,101, 32, 32, 44, 32,100,111, 32,110,111,116, 32, 99,104, 97,110,103,101, 32,116,
-   104,105,115, 13, 10, 13, 10, 32, 51, 48, 32, 32, 61, 61, 32, 32, 32, 32, 32, 69,113,117, 97,108, 95,
-    49, 13, 10, 32, 51, 49, 32, 46, 61, 61, 32, 32, 32, 32, 32, 69,113,117, 97,108, 95, 50, 13, 10, 32,
-    51, 50, 32, 32, 33, 61, 32, 32, 32, 32, 32, 78,111,116, 69,113,117, 97,108, 95, 49, 13, 10, 32, 51,
-    51, 32, 46, 33, 61, 32, 32, 32, 32, 32, 78,111,116, 69,113,117, 97,108, 95, 50, 13, 10, 32, 51, 52,
-    32, 32, 60, 32, 32, 32, 32, 32, 32, 76,101,115,115, 84,104, 97,110, 95, 49, 13, 10, 32, 51, 53, 32,
-    46, 60, 32, 32, 32, 32, 32, 32, 76,101,115,115, 84,104, 97,110, 95, 50, 13, 10, 32, 51, 54, 32, 32,
-    62, 32, 32, 32, 32, 32, 32, 71,114,101, 97,116,101,114, 84,104, 97,110, 95, 49, 13, 10, 32, 51, 55,
-    32, 46, 62, 32, 32, 32, 32, 32, 32, 71,114,101, 97,116,101,114, 84,104, 97,110, 95, 50, 13, 10, 32,
-    51, 56, 32, 32, 60, 61, 32, 32, 32, 32, 32, 76,101,115,115, 79,114, 69,113,117, 97,108, 95, 49, 13,
-    10, 32, 51, 57, 32, 46, 60, 61, 32, 32, 32, 32, 32, 76,101,115,115, 79,114, 69,113,117, 97,108, 95,
-    50, 13, 10, 32, 52, 48, 32, 32, 62, 61, 32, 32, 32, 32, 32, 71,114,101, 97,116,101,114, 79,114, 69,
-   113,117, 97,108, 95, 49, 13, 10, 32, 52, 49, 32, 46, 62, 61, 32, 32, 32, 32, 32, 71,114,101, 97,116,
-   101,114, 79,114, 69,113,117, 97,108, 95, 50, 13, 10, 13, 10, 32, 53, 48, 32, 43, 32, 32, 32, 32, 32,
-    32, 32, 80,111,115,105,116,105,118,101, 13, 10, 32, 53, 49, 32, 45, 32, 32, 32, 32, 32, 32, 32, 78,
-   101,103, 97,116,105,118,101, 32, 13, 10, 32, 53, 50, 32, 43, 32, 32, 32, 32, 32, 32, 32, 80,108,117,
-   115, 13, 10, 32, 53, 51, 32, 45, 32, 32, 32, 32, 32, 32, 32, 77,105,110,117,115, 32, 13, 10, 32, 53,
-    52, 32, 42, 32, 32, 32, 32, 32, 32, 32, 84,105,109,101,115, 95, 49, 13, 10, 32, 53, 53, 32, 46, 42,
-    32, 32, 32, 32, 32, 32, 84,105,109,101,115, 95, 50, 13, 10, 32, 53, 54, 32, 47, 32, 32, 32, 32, 32,
-    32, 32, 68,105,118,105,100,101, 95, 49, 13, 10, 32, 53, 55, 32, 46, 47, 32, 32, 32, 32, 32, 32, 68,
-   105,118,105,100,101, 95, 50, 13, 10, 32, 53, 56, 32, 94, 32, 32, 32, 32, 32, 32, 32, 84,111, 80,111,
-   119,101,114, 95, 49, 13, 10, 32, 53, 57, 32, 46, 94, 32, 32, 32, 32, 32, 32, 84,111, 80,111,119,101,
-   114, 95, 50, 13, 10, 32, 54, 48, 32,226,128,162, 32, 32, 32, 32, 32, 32, 32, 68,111,116, 80,114,111,
-   100,117, 99,116, 13, 10, 32, 54, 49, 32, 33, 32, 32, 32, 32, 32, 32, 32, 70, 97, 99,116,111,114,105,
-    97,108, 13, 10, 32, 54, 50, 32, 94, 84, 32, 32, 32, 32, 32, 32, 84,114, 97,110,115,112,111,115,101,
-    13, 10, 13, 10, 32, 54, 52, 32, 62, 62, 32, 32, 32, 32, 32, 32, 65,114,105, 95, 83,104,105,102,116,
-    95, 82,105,103,104,116, 13, 10, 32, 54, 53, 32, 60, 60, 32, 32, 32, 32, 32, 32, 65,114,105, 95, 83,
-   104,105,102,116, 95, 76,101,102,116, 13, 10, 32, 54, 54, 32,124, 32, 32, 32, 32, 32, 32, 32, 66,105,
-   116,119,105,115,101, 95, 79, 82, 13, 10, 32, 54, 55, 32, 94, 43, 32, 32, 32, 32, 32, 32, 66,105,116,
-   119,105,115,101, 95, 88, 79, 82, 13, 10, 32, 54, 56, 32, 38, 32, 32, 32, 32, 32, 32, 32, 66,105,116,
-   119,105,115,101, 95, 65, 78, 68, 13, 10, 32, 54, 57, 32,126, 32, 32, 32, 32, 32, 32, 32, 66,105,116,
-   119,105,115,101, 95, 78, 79, 84, 13, 10, 13, 10, 32, 55, 48, 32,111,114, 32, 32, 32, 32, 32, 32, 76,
-   111,103,105, 99, 97,108, 95, 79, 82, 13, 10, 32, 55, 49, 32, 97,110,100, 32, 32, 32, 32, 32, 76,111,
-   103,105, 99, 97,108, 95, 65, 78, 68, 13, 10, 32, 55, 50, 32,110,111,116, 32, 32, 32, 32, 32, 76,111,
-   103,105, 99, 97,108, 95, 78, 79, 84, 13, 10, 32, 55, 51, 32,109,111,100, 32, 32, 32, 32, 32, 77,111,
-   100,117,108,111, 95, 82,101,109, 97,105,110,100,101,114, 13, 10, 13, 10, 32, 56, 48, 32,101, 32, 32,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 67,111,110,115,116, 97,110,116, 95, 69, 95, 50, 95, 55, 49, 56,
-    95, 13, 10, 32, 56, 49, 32,112,105, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 67,111,110,115,116, 97,
-   110,116, 95, 80, 73, 95, 51, 95, 49, 52, 49, 95, 13, 10, 32, 56, 50, 32,105, 32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 83, 81, 82, 84, 95,111,102, 95, 78,101,103, 97,116,105,118,101, 95, 79,110,101,
-    13, 10, 13, 10, 32, 57, 49, 32,101,120,112, 32, 32, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,
-   105,111,110, 95, 80,111,119,101,114, 95,111,102, 95,101, 13, 10, 32, 57, 50, 32,108,110, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 76,111,103, 97,114,105,116,104,109,
-    95, 66, 97,115,101, 95,101, 13, 10, 32, 57, 51, 32,108,111,103, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    70,117,110, 99,116,105,111,110, 95, 76,111,103, 97,114,105,116,104,109, 95, 66, 97,115,101, 95, 49,
-    48, 13, 10, 32, 57, 52, 32,115,113,114,116, 32, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,
-   111,110, 95, 83,113,117, 97,114,101, 95, 82,111,111,116, 13, 10, 32, 57, 53, 32, 99,101,105,108, 32,
-    32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 77, 97,116,104, 95, 67,101,105,108,
-    13, 10, 32, 57, 54, 32,102,108,111,111,114, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,
-   110, 95, 77, 97,116,104, 95, 70,108,111,111,114, 13, 10, 32, 57, 55, 32,102,117,108,108,102,108,111,
-   111,114, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 70,117,108,108, 70,108,111,111,114, 13, 10,
-    32, 57, 56, 32,103,101,116,112,114,105,109,101,115, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95,
-    71,101,116, 80,114,105,109,101,115, 13, 10, 13, 10, 32, 49, 48, 48, 32, 99, 97, 98,115, 32, 32, 32,
-    32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 65, 98,115,111,108,117,116,101, 95, 86, 97,108,
-   117,101, 13, 10, 32, 49, 48, 49, 32, 99, 97,114,103, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,
-   105,111,110, 95, 65,114,103,117,109,101,110,116, 95, 65,110,103,108,101, 13, 10, 32, 49, 48, 50, 32,
-   114,101, 97,108, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 82,101, 97,108, 95,
-    80, 97,114,116, 13, 10, 32, 49, 48, 51, 32,105,109, 97,103, 32, 32, 32, 32, 32, 32, 32, 70,117,110,
-    99,116,105,111,110, 95, 73,109, 97,103, 95, 80, 97,114,116, 13, 10, 32, 49, 48, 52, 32, 99,111,110,
-   106, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 67,111,109,112,108,101,120, 95,
-    67,111,110,106,117,103, 97,116,101, 13, 10, 32, 49, 48, 53, 32,112,114,111,106, 32, 32, 32, 32, 32,
-    32, 32, 70,117,110, 99,116,105,111,110, 95, 67,111,109,112,108,101,120, 95, 80,114,111,106,101, 99,
-   116,105,111,110, 13, 10, 13, 10, 32, 49, 48, 57, 32,114, 97,110,100, 32, 32, 32, 32, 32, 32, 32, 70,
-   117,110, 99,116,105,111,110, 95, 97, 82, 97,110,100,111,109, 95, 78,117,109, 98,101,114, 13, 10, 32,
-    49, 49, 48, 32,115,114, 97,110,100, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95,115,
-    82, 97,110,100,111,109, 95, 78,117,109, 98,101,114, 13, 10, 32, 49, 49, 49, 32,115,117,109, 32, 32,
-    32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110, 95, 83,117,109,109, 97,116,105,111,110, 13,
-    10, 32, 49, 49, 50, 32,109, 97,120, 32, 32, 32, 32, 32, 32, 32, 32, 70,117,110, 99,116,105,111,110,
-    95, 77, 97,120,105,109,117,109, 13, 10, 32, 49, 49, 51, 32,109,105,110, 32, 32, 32, 32, 32, 32, 32,
-    32, 70,117,110, 99,116,105,111,110, 95, 77,105,110,105,109,117,109, 13, 10, 13, 10, 32, 49, 49, 55,
-    32,115,105,110, 32, 32, 32, 32, 32, 32, 32, 32, 84,114,105,103,111,110,111,109,101,116,114,105, 99,
-    95, 83,105,110,101, 13, 10, 32, 49, 49, 56, 32, 99,111,115, 32, 32, 32, 32, 32, 32, 32, 32, 84,114,
-   105,103,111,110,111,109,101,116,114,105, 99, 95, 67,111,115,105,110,101, 13, 10, 32, 49, 49, 57, 32,
-   116, 97,110, 32, 32, 32, 32, 32, 32, 32, 32, 84,114,105,103,111,110,111,109,101,116,114,105, 99, 95,
-    84, 97,110,103,101,110,116, 13, 10, 32, 49, 50, 48, 32, 97,115,105,110, 32, 32, 32, 32, 32, 32, 32,
-    84,114,105,103,111,110,111,109,101,116,114,105, 99, 95, 83,105,110,101, 95, 73,110,118,101,114,115,
-   101, 13, 10, 32, 49, 50, 49, 32, 97, 99,111,115, 32, 32, 32, 32, 32, 32, 32, 84,114,105,103,111,110,
-   111,109,101,116,114,105, 99, 95, 67,111,115,105,110,101, 95, 73,110,118,101,114,115,101, 13, 10, 32,
-    49, 50, 50, 32, 97,116, 97,110, 32, 32, 32, 32, 32, 32, 32, 84,114,105,103,111,110,111,109,101,116,
-   114,105, 99, 95, 84, 97,110,103,101,110,116, 95, 73,110,118,101,114,115,101, 13, 10, 32, 49, 50, 51,
-    32,115,105,110,104, 32, 32, 32, 32, 32, 32, 32, 72,121,112,101,114, 98,111,108,105, 99, 95, 83,105,
-   110,101, 13, 10, 32, 49, 50, 52, 32, 99,111,115,104, 32, 32, 32, 32, 32, 32, 32, 72,121,112,101,114,
-    98,111,108,105, 99, 95, 67,111,115,105,110,101, 13, 10, 32, 49, 50, 53, 32,116, 97,110,104, 32, 32,
-    32, 32, 32, 32, 32, 72,121,112,101,114, 98,111,108,105, 99, 95, 84, 97,110,103,101,110,116, 13, 10,
-    32, 49, 50, 54, 32, 97,115,105,110,104, 32, 32, 32, 32, 32, 32, 72,121,112,101,114, 98,111,108,105,
-    99, 95, 83,105,110,101, 95, 73,110,118,101,114,115,101, 13, 10, 32, 49, 50, 55, 32, 97, 99,111,115,
-   104, 32, 32, 32, 32, 32, 32, 72,121,112,101,114, 98,111,108,105, 99, 95, 67,111,115,105,110,101, 95,
-    73,110,118,101,114,115,101, 13, 10, 32, 49, 50, 56, 32, 97,116, 97,110,104, 32, 32, 32, 32, 32, 32,
-    72,121,112,101,114, 98,111,108,105, 99, 95, 84, 97,110,103,101,110,116, 95, 73,110,118,101,114,115,
-   101, 13, 10, 13, 10, 32, 49, 51, 49, 32,114, 97,110,103,101, 32, 32, 32, 32, 32, 32, 71,101,110,101,
-   114, 97,116,101, 95, 82, 97,110,103,101, 13, 10, 32, 49, 51, 50, 32,118,101, 99,116,111,114, 32, 32,
-    32, 32, 32, 71,101,110,101,114, 97,116,101, 95, 86,101, 99,116,111,114, 13, 10, 32, 49, 51, 51, 32,
-   108,101,110, 32, 32, 32, 32, 32, 32, 32, 32, 76,101,110,103,116,104, 95,111,102, 95, 86, 97,108,117,
-   101, 13, 10, 32, 49, 51, 52, 32,115,105,122,101, 32, 32, 32, 32, 32, 32, 32, 83,105,122,101, 95,111,
-   102, 95, 86, 97,108,117,101, 13, 10, 32, 49, 51, 53, 32,116,114,121, 32, 32, 32, 32, 32, 32, 32, 32,
-    84,114,121, 95, 65,110,100, 95, 67, 97,116, 99,104, 13, 10, 32, 49, 51, 54, 32,112,114,105,110,116,
-    32, 32, 32, 32, 32, 32, 80,114,105,110,116, 95, 86, 97,108,117,101, 13, 10, 13, 10, 32, 49, 52, 48,
-    32,116,111,115,116,114, 32, 32, 32, 32, 32, 32, 67,111,110,118,101,114,116, 95, 84,111, 95, 83,116,
-   114, 13, 10, 32, 49, 52, 49, 32,116,111,110,117,109, 32, 32, 32, 32, 32, 32, 67,111,109,118,101,114,
-   116, 95, 84,111, 95, 78,117,109, 13, 10, 32, 49, 52, 50, 32,116,111,114, 97,116, 32, 32, 32, 32, 32,
-    32, 67,111,110,118,101,114,116, 95, 84,111, 95, 82, 97,116, 13, 10, 32, 49, 52, 51, 32,116,111,102,
-   108,116, 32, 32, 32, 32, 32, 32, 67,111,110,118,101,114,116, 95, 84,111, 95, 70,108,116, 13, 10, 13,
-    10, 0
-};
-
-
-static const wchar default_twst_FRENCH[] =
-{
-   0
-};
-
-static const wchar default_twsf_FRENCH[] =
-{
-   0
-};
-
-
-const wchar* default_twst (enum LANGUAGE language)
-{   switch(language){
-        case ENGLISH: return default_twst_ENGLISH;
-        case FRENCH:  return default_twst_FRENCH;
+    const wchar* str;
+    switch(language)
+    {
+        case RFET_FRENCH: str = default_twsf_FRENCH; break;
+        default:     str = default_twsf_ENGLISH; break;
     }
-    return NULL;
+    return str;
 }
 
-const wchar* default_twsf (enum LANGUAGE language)
-{   switch(language){
-        case ENGLISH: return default_twsf_ENGLISH;
-        case FRENCH:  return default_twsf_FRENCH;
+static const_Str2 default_twst (enum RFET_LANGUAGE language)
+{
+    const wchar* str;
+    switch(language)
+    {
+        case RFET_FRENCH: str = default_twst_FRENCH; break;
+        default:     str = default_twst_ENGLISH; break;
     }
-    return NULL;
+    return str;
 }
 

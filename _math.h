@@ -7,158 +7,169 @@
 #include "_value.h"
 
 
-/*-------------- Baisc operations ----------------*/
+/*-------------- Custom operations ----------------*/
 
-value positive (value n);
-value negative (value n);
+value setSmaCom2 (value v, SmaFlt Re, SmaFlt Im);
+value tovector (value v, uint32_t count);
+value combine (value v);
 
-value add      (value n, value m);
-value subtract (value n, value m);
-value multiply (value n, value m);
-value  divide  (value n, value m);
-value idivide  (value n, value m);
+value _size(value v);
+value _span(value v);
+value _sum (value v);
+value _max (value v);
+value _min (value v);
 
-value _ceil    (value n);
-value _floor   (value n);
+value indexing (value v);
+value _vector  (value v);
+value _range   (value v);
 
-
-/* --------- Exponent and Logarithm Functions ----------- */
-
-value power  (value n, value m);
-value _sqrt  (value n);
-value _isqrt (value n);
-value _log_e (value n);
-value _log_10(value n);
-value _exp_e (value n);
+value transpose (value v);
+value dotproduct(value v);
 
 
-/* --------- Trigonometric and Hyperbolic Functions ---- */
+/*-------------- Basic operations ----------------*/
 
-value _cos (value n);
-value _sin (value n);
-value _tan (value n);
+value _pos  (value v);
+value _neg  (value v);
+value __mul (value v);
+value __div (value v);
+value power (value v);
 
-value _cosh (value n);
-value _sinh (value n);
-value _tanh (value n);
-
-value _acos (value n);
-value _asin (value n);
-value _atan (value n);
-
-value _acosh (value n);
-value _asinh (value n);
-value _atanh (value n);
-
-
-/* --------- Mainly For Complex Numbers ---------------- */
-
-value __abs (value n);
-value _carg (value n);
-value _real (value n);
-value _imag (value n);
-value _conj (value n);
-value _proj (value n);
+value _add  (value v);
+value _sub  (value v);
+value _mul  (value v);
+value _div  (value v);
+value _pow  (value v);
 
 
 /* ----------- Integer operations ------------------ */
 
-value factorial (value n);
-value modulo    (value n, value m);
-value find_gcd  (value n, value m);
+value _idiv (value v);
+value _mod  (value v);
+value _gcd  (value v);
+value _ilog (value v);
+value _isqrt(value v);
+value _floor(value v);
+value _ceil (value v);
+
+value factorial (value v);
+value fullfloor (value v);
+value getprimes (value v);
+value _srand    (value v);
+value _rand     (value v);
+
+
+/* --------- Exponent and Logarithm Functions ----------- */
+
+value _sqrt (value v);
+value _cbrt (value v);
+value _exp  (value v);
+value _log  (value v);
+
+
+/* --------- Trigonometric and Hyperbolic Functions ---- */
+
+value _cos  (value v);
+value _sin  (value v);
+value _tan  (value v);
+value _acos (value v);
+value _asin (value v);
+value _atan (value v);
+
+value _cosh (value v);
+value _sinh (value v);
+value _tanh (value v);
+value _acosh(value v);
+value _asinh(value v);
+value _atanh(value v);
+
+
+/* --------- Complex Numbers Functions ---------------- */
+
+value _cabs (value v);
+value _carg (value v);
+value _real (value v);
+value _imag (value v);
+value _conj (value v);
+value _proj (value v);
 
 
 /* --------- Bitwise Operations ------------------------ */
 
-value shift_right (value n, value m);
-value shift_left  (value n, value m);
-value bitwise_or  (value n, value m);
-value bitwise_xor (value n, value m);
-value bitwise_and (value n, value m);
-value bitwise_not (value n);
+value shift_left  (value v);
+value shift_right (value v);
+value bitwise_xor (value v);
+value bitwise_or  (value v);
+value bitwise_and (value v);
+value bitwise_not (value v);
 
 
 /* --------- Logical Operations ------------------------ */
 
-value logical_or  (value n, value m);
-value logical_and (value n, value m);
-value logical_not (value n);
+value logical_or  (value v);
+value logical_and (value v);
+value logical_not (value v);
+#define _not logical_not
 
 
 /* --------- Comparison Operations --------------------- */
 
-//value compare        (value n, value m);
-value equalTo        (value n, value m);
-value notEqual       (value n, value m);
-value lessThan       (value n, value m);
-value greaterThan    (value n, value m);
-value lessOrEqual    (value n, value m);
-value greaterOrEqual (value n, value m);
+value sameAs      (value v);
+value equalTo     (value v);
+value lessThan    (value v);
+value greaterThan (value v);
+
+static inline value notSame       (value v) { return logical_not(sameAs(v)     ); }
+static inline value notEqual      (value v) { return logical_not(equalTo(v)    ); }
+static inline value lessOrEqual   (value v) { return logical_not(greaterThan(v)); }
+static inline value greaterOrEqual(value v) { return logical_not(lessThan(v)   ); }
 
 
-/*--- only used for when user wants to 'explicitly' convert between value types. ---*/
+/*------------- convert between value types -------------------*/
 
-value toRat (value n); // mainly for Flt to Rat, 'never' done implicitly.
-value toFlt (value n); // mainly for Num to Flt/Com, important conversion!
+value toStr (value v);
+value toNum (value v);
+value toRat (value v); // mainly for Flt to Num, where Num is a Rat
+value toFlt (value v); // mainly for Num to Flt, also for Int to Flt
 
-
-/*------------- get array from value structure -------------------*/
-
-bool floatFromVst(SmaFlt* output, const value* input, int count, wchar* errormessage, const char* name);
-bool integerFromVst (int* output, const value* input, int count, wchar* errormessage, const char* name);
+value vStrLen (value v);
 
 
 /*----------------- string-value conversion ---------------------*/
 
-value StrToVal (const wchar* str);  // single output value
+// <str> must be a literal: a number, a string, a character.
+value StrToVal (value out, const wchar* str);
 
-/*
-    if(info&3 == 0) print the values (number and string) normally.
-    if(info&3 == 1) print strings as 't' and numbers as 'n'.
-    if(info&3 == 2) print numbers as 'sn' or 'bn'.
-    if(info&3 == 3) print numbers as si,sr,sf,sc,bi,br,bf,bc.
-    if(info&4 != 0) put new line, used so to print matrix well.
+enum PUT_INFO {
+    PUT_NORMAL   = 0x000,   // print the values (number and string) normally.
+    PUT_CATEGORY = 0x100,   // print everything as 'v'
+    PUT_VAL_TYPE = 0x200,   // print strings as 'str' and numbers as int, rat, flt or com
+    PUT_ESCAPE   = 0x400,
+    PUT_NEWLINE  = 0x800    // put newline; used so to print matrix with each row on its own line
+};
 
-    On success, return end of result string. On error,
-    set an error message as the result then return NULL.
-*/
-wchar* VstToStr (const value* vst,  // input value structure
-                 wchar* result,     // output string to store result
-                 char info,         // extra information used
-                 char base,         // base: 2, 8, 10, 16, or -1 for default
-                 char  wplaces,     // number of whole places: -1 for default
-                 short dplaces);    // number of decimal places: -1 for default
+value VstToStr (value v,            // input value to convert = vPrev(v)
+                int info_base,      // base: 2, 8, 10, 16, 0 for default
+                int t_places,       // number of total places, -1 for default
+                int d_places);      // number of decimal places, -1 for default
 
 
-
-static inline wchar* intToStr (wchar* str, SmaInt n)
+#include "_strfun.h" // for strcpy22()
+static inline wchar* intToStr (wchar* out, SmaInt n)
 {
-    value y = setSmaInt(n);
-    VstToStr(&y,str,0,-1,-1,-1);
-    return str;
+    uint32_t v[100];
+    VstToStr(setSmaInt(v, n), 0,-1,-1);
+    assert(v == vGet(v));
+    return strcpy22(out, getStr2(v));
 }
 
-static inline wchar* fltToStr (wchar* str, SmaFlt n)
+static inline SmaInt strToInt (const wchar* str, value stack)
 {
-    value y = setSmaFlt(n);
-    VstToStr(&y,str,0,-1,-1,-1);
-    return str;
-}
-
-static inline bool strToInt (const wchar* str, int *n)
-{
-    value v = _floor(StrToVal(str));
-    if(getType(v)) { *n = (int)getSmaInt(v); return true; }
-    else { //strcpy22(errorMessage(), getNotval(v));
-        return false; }
-}
-
-static inline bool strToFlt (const wchar* str, SmaFlt *n)
-{
-    value v = toFlt(StrToVal(str));
-    if(getType(v)) { *n = (int)getSmaFlt(v); return true; }
-    else { //strcpy22(errorMessage(), getNotval(v));
-        return false; }
+    assert(stack!=NULL);
+    _floor(StrToVal(stack, str));
+    if(value_type(stack)==aSmaInt)
+        return getSmaInt(stack);
+    else return 0;
 }
 
 

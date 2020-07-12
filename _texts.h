@@ -2,6 +2,9 @@
 #define __TEXTS_H
 /*
     _texts.h
+
+    TWSF = Text With Space False
+    TWSF = Text With Space True
 */
 
 #include "_stddef.h"
@@ -11,126 +14,142 @@ enum ID_TWSF
 {
     ID_TWSF_START       = 0,
 
-    Opened_Bracket_1    = 1,
-    Opened_Bracket_2    = 2,
-    Opened_Bracket_3    = 3,
-    Closed_Bracket_1    = 4,
-    Closed_Bracket_2    = 5,
-    Closed_Bracket_3    = 6,
+    OpenedBracket1      = 1,
+    OpenedBracket2      = 2,
+    OpenedBracket3      = 3,
+    ClosedBracket1      = 4,
+    ClosedBracket2      = 5,
+    ClosedBracket3      = 6,
 
-    DecimalPoint        = 10,
+    EndOfStatement      = 10,
     CommaSeparator      = 11,
-    EndOfStatement      = 12,
-    DoubleQuote         = 13,
-    Assignment          = 14,
+    Concatenate         = 12,
+    Replacement         = 13,
+    ConditionAsk        = 14,
+    ConditionChoose     = 15,
+    DecimalPoint        = 16,
+    DoubleQuote         = 17,
 
-    Concatenate         = 20,
-    Replacement         = 21,
-    ConditionAsk        = 22,
-    ConditionChoose     = 23,
+    ReplaceRecord       = 18,
+    OperJustJump        = 19,
 
-    Equal_1             = 30,
-    Equal_2             = 31,
-    NotEqual_1          = 32,
-    NotEqual_2          = 33,
-    LessThan_1          = 34,
-    LessThan_2          = 35,
-    GreaterThan_1       = 36,
-    GreaterThan_2       = 37,
-    LessOrEqual_1       = 38,
-    LessOrEqual_2       = 39,
-    GreaterOrEqual_1    = 40,
-    GreaterOrEqual_2    = 41,
+    Logical_OR          = 20,
+    Logical_AND         = 21,
+    Logical_NOT         = 22,
+    Oper_mod            = 23,
 
-    Positive            = 50,
-    Negative            = 51,
-    Plus                = 52,
-    Minus               = 53,
-    Times_1             = 54,
-    Times_2             = 55,
-    Divide_1            = 56,
-    Divide_2            = 57,
-    ToPower_1           = 58,
-    ToPower_2           = 59,
-    DotProduct          = 60,
-    Factorial           = 61,
-    Transpose           = 62,
-    Indexing            = 63,
+    Assignment          = 30,
+    EqualTo             = 31,
+    SameAs              = 32,
+    NotSame             = 33,
+    NotEqual            = 34,
+    LessThan            = 35,
+    GreaterThan         = 36,
+    LessOrEqual         = 37,
+    GreaterOrEqual      = 38,
 
-    Ari_Shift_Right     = 64,
-    Ari_Shift_Left      = 65,
-    Bitwise_OR          = 66,
-    Bitwise_XOR         = 67,
-    Bitwise_AND         = 68,
-    Bitwise_NOT         = 69,
+    Oper_pos            = 40,
+    Oper_neg            = 41,
+    Oper_add            = 42,
+    Oper_sub            = 43,
 
-    Logical_OR          = 70,
-    Logical_AND         = 71,
-    Logical_NOT         = 72,
-    Modulo_Remainder    = 73,
+    Oper_mul0           = 49,
+    Oper_mul1           = 50,
+    Oper_mul2           = 51,
+    Oper_div1           = 52,
+    Oper_divI           = 53,
+    Oper_div2           = 54,
+    Oper_pow1           = 55,
+    Oper_pow2           = 56,
 
-    Constant_E_2_718_               = 80,
-    Constant_PI_3_141_              = 81,
-    SQRT_of_Negative_One            = 82,
+    Bitwise_OR          = 60,
+    Bitwise_XOR         = 61,
+    Bitwise_AND         = 62,
+    Bitwise_NOT         = 63,
+    Shift_Right         = 64,
+    Shift_Left          = 65,
 
-    Function_Power_of_e             = 91,
-    Function_Logarithm_Base_e       = 92,
-    Function_Logarithm_Base_10      = 93,
-    Function_Square_Root            = 94,
-    Function_Math_Ceil              = 95,
-    Function_Math_Floor             = 96,
-    Function_FullFloor              = 97,
-    Function_GetPrimes              = 98,
+    Oper_dotproduct     = 70,
+    Oper_transpose      = 71,
+    Oper_indexing       = 72,
 
-    Function_Absolute_Value         = 100,
-    Function_Argument_Angle         = 101,
-    Function_Real_Part              = 102,
-    Function_Imag_Part              = 103,
-    Function_Complex_Conjugate      = 104,
-    Function_Complex_Projection     = 105,
+    Constant_this       = 79,
+    Constant_true       = 80,
+    Constant_false      = 81,
+    Constant_e_2_718_   = 82,
+    Constant_pi_3_141_  = 83,
+    SQRT_of_Neg_One     = 84,
 
-    Function_aRandom_Number         = 109,
-    Function_sRandom_Number         = 110,
-    Function_Summation              = 111,
-    Function_Maximum                = 112,
-    Function_Minimum                = 113,
+    Function_factorial  = 90,
+    Function_fullfloor  = 91,
+    Function_getprimes  = 92,
+    Function_srand      = 93,
+    Function_rand       = 94,
 
-    Trigonometric_Sine              = 117,
-    Trigonometric_Cosine            = 118,
-    Trigonometric_Tangent           = 119,
-    Trigonometric_Sine_Inverse      = 120,
-    Trigonometric_Cosine_Inverse    = 121,
-    Trigonometric_Tangent_Inverse   = 122,
-    Hyperbolic_Sine                 = 123,
-    Hyperbolic_Cosine               = 124,
-    Hyperbolic_Tangent              = 125,
-    Hyperbolic_Sine_Inverse         = 126,
-    Hyperbolic_Cosine_Inverse       = 127,
-    Hyperbolic_Tangent_Inverse      = 128,
+    Function_gcd        = 95,
+    Function_ilog       = 96,
+    Function_isqrt      = 97,
+    Function_floor      = 98,
+    Function_ceil       = 99,
 
-    Generate_Range                  = 131,
-    Generate_Vector                 = 132,
-    Length_of_Value                 = 133,
-    Size_of_Value                   = 134,
-    Try_And_Catch                   = 135,
-    Print_Value                     = 136,
+    Function_sqrt       = 100,
+    Function_cbrt       = 101,
+    Function_exp        = 102,
+    Function_log        = 103,
 
-    Convert_To_Str                  = 140,
-    Convert_To_Num                  = 141,
-    Convert_To_Rat                  = 142,
-    Convert_To_Flt                  = 143,
+    Function_cos        = 110,
+    Function_sin        = 111,
+    Function_tan        = 112,
+    Function_acos       = 113,
+    Function_asin       = 114,
+    Function_atan       = 115,
 
-    SET_NUMBER                      = 160,
-    SET_STRING                      = 161,
-    SET_VARIABLE                    = 162,
-    SET_FUNCTION                    = 163,
-    SET_PARAMETER                   = 164,
-    SET_OUTSIDER                    = 165,
-    SET_CURRENT                     = 166,
-    SET_CONTCALL                    = 167,
-    SET_CONSTANT                    = 168,
+    Function_cosh       = 116,
+    Function_sinh       = 117,
+    Function_tanh       = 118,
+    Function_acosh      = 119,
+    Function_asinh      = 120,
+    Function_atanh      = 121,
 
-    ID_TWSF_STOP                    = 170
+    Function_cabs       = 122,
+    Function_carg       = 123,
+    Function_real       = 124,
+    Function_imag       = 125,
+    Function_conj       = 126,
+    Function_proj       = 127,
+
+    Function_size       = 140,
+    Function_span       = 141,
+    Function_sum        = 142,
+    Function_max        = 143,
+    Function_min        = 144,
+
+    Function_vector     = 150,
+    Function_range      = 151,
+    Function_try        = 152,
+    Function_try_that   = 153,
+    Function_try_catch  = 154,
+
+    Function_tostr      = 160,
+    Function_tonum      = 161,
+    Function_torat      = 162,
+    Function_toflt      = 163,
+
+    Function_eval       = 170,
+    Function_call       = 171,
+    Function_print      = 172,
+    Function_strlen     = 173,
+
+    ID_TWSF_STOP        = 179,
+
+    SET_CONSTANT        = 180,
+    SET_COMPNAME        = 181,
+    SET_OUTSIDER        = 182,
+    SET_REPL_LHS        = 183,
+    SET_PARAMTER        = 184,
+    SET_VAR_FUNC        = 185,
+    SET_DOT_CALL        = 186,
+    SET_DOT_FUNC        = 187
 };
 
 
@@ -138,12 +157,9 @@ enum ID_TWST
 {
     ID_TWST_START               = 0,
 
-    End_Of_Text                 = 1,
-
     // inside component.c
-    Component_Already_Defined   = 10,
-    Parameter_Vst_Is_Invalid    = 11,
-    Result_Vst_Is_Invalid       = 12,
+    Cannot_Find_Component       = 10,
+    Component_Already_Defined   = 11,
 
     // inside expression.c
     IsNot_ValueStructure        = 21,
@@ -153,24 +169,16 @@ enum ID_TWST
     Bracket_Match_Invalid       = 30,
     Bracket_Match_None          = 31,
     Lacking_Bracket             = 32,
-    Lacking_Brackets            = 33,
-
-    IsNot_Number                = 40,
-    IsNot_Component             = 41,
-    Deadlock_Found              = 42,
 
     // inside operations*.c
-    Invalid_Operand             = 50,
     Operands_DoNot_Match        = 51,
     Operand_IsNot_Matrix        = 52,
     Argument_vs_Parameter       = 53,
+    ResultSt_vs_Expected        = 54,
 
-    Indexing_Single_Number      = 54,
     Index_OutOf_Range           = 55,
-    Vector_Starting_Value       = 56,
-    Vector_Stopping_Value       = 57,
-    Vector_Middle_Value         = 58,
-    Vector_Length_Invalid       = 59,
+    Vector_Middle_Value         = 56,
+    Vector_Length_Invalid       = 57,
 
     // inside operations_specific.c
     Left_IsNot_Matrix           = 70,
@@ -186,7 +194,7 @@ enum ID_TWST
 
     // evaluation errors
     Division_By_Zero            = 90,
-    Not_On_Complex_Number       = 91,
+    Operand_Not_Supported       = 91,
     Only_On_Integer_Number      = 92,
     Argument_OutOf_Domain       = 93,
 
@@ -194,18 +202,16 @@ enum ID_TWST
 };
 
 
-const wchar* TWSF (enum ID_TWSF ID); // get loaded Text-With-Space-False
-const wchar* TWST (enum ID_TWST ID); // get loaded Text-With-Space-True
+bool IS_TWSF_ID (int ID);
+bool IS_TWST_ID (int ID);
 
-bool texts_load_twsf (const wchar* fileContent);
-bool texts_load_twst (const wchar* fileContent);
+const_Str2 TWSF (enum ID_TWSF ID); // get loaded string of
+const_Str2 TWST (enum ID_TWST ID); // the corresponding ID
 
-enum LANGUAGE { ENGLISH, FRENCH };
-const wchar* default_twsf (enum LANGUAGE language);
-const wchar* default_twst (enum LANGUAGE language);
+enum RFET_LANGUAGE { RFET_ENGLISH, RFET_FRENCH };
 
-bool is_TWSF_ID (int ID);
-bool is_TWST_ID (int ID);
+bool texts_load_twsf (value stack, enum RFET_LANGUAGE language);
+bool texts_load_twst (value stack, enum RFET_LANGUAGE language);
 
 
 #endif
