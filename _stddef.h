@@ -62,8 +62,8 @@ enum ValueType // use (VT << 28)
   //VAL_STRUCT      = 0x6,  // [12-bit type + 16-bit size]
 
   /* uses first [0, 28) bits for size */
-    VAL_INTFLT      = 0x7,  // [size = 2 or 3 or more]
-    VAL_NUMBER      = 0x9,  // [size = 4 or 6 or more]
+  //VAL_INTFLT      = 0x7,
+    VAL_NUMBER      = 0x9,
 
   /* uses first [0, 28) bits for count */
     VAL_ARRRAY      = 0xA,  // [count] , [E_VT]

@@ -53,8 +53,7 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
     assert(str && end);
     const wchar *s = str;
     wchar c=0;
-    while(s!=NULL) // not a loop
-    {
+    do{
         if(s==end) { end=0; break; } // if s = ''
         c = *s++;
         if(c != '\\') break;
@@ -98,8 +97,7 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
             }
             c=i;
         }
-        break;
-    }
+    }while(0);
     if(out) *out=c;
     int r = s - str;
     return end ? r : -r;
@@ -204,7 +202,8 @@ Str2 sprintf2 (Str2 output, int argc, const_Str2* argv)
     while(true)
     {
         if(getlen && output)
-        {   len += output - (Str2)0;
+        {
+            len += output - (Str2)0;
             output = NULL;
         }
         if(strEnd2(format)) break;
@@ -274,7 +273,7 @@ Str2 set_message (Str2 output, int argc, const_Str2* argv, const_Str3 str)
             output = strcpy22(output, s);
             continue;
         }
-        if(c == '0') { i++; continue; }
+             if(c == '0') { i++; continue; }
         else if(c == 's') i++;
         else if('1'<=c && c<='9') i = c-'0';
         else if('A'<=c && c<='Z') i = c-'A'+10;
@@ -298,8 +297,7 @@ Str2 set_message (Str2 output, int argc, const_Str2* argv, const_Str3 str)
 
 const_Str2 strNext2 (const_Str2 str)
 {
-    while(true) // not a loop
-    {
+    do{
         if(strEnd2(str)) break;
         if(*str != '#')
         {
@@ -335,15 +333,13 @@ const_Str2 strNext2 (const_Str2 str)
                 { str++; break; }
             }
         }
-        break;
-    }
+    }while(0);
     return str;
 }
 
 const_Str3 strNext3 (const_Str3 str)
 {
-    while(true) // not a loop
-    {
+    do{
         if(strEnd3(str)) break;
         if(sChar(str) != '#')
         {
@@ -379,8 +375,7 @@ const_Str3 strNext3 (const_Str3 str)
                 { str = sNext(str); break; }
             }
         }
-        break;
-    }
+    }while(0);
     return str;
 }
 
@@ -421,7 +416,8 @@ static uint16_t submitSourceName (const_Str2 name)
         if(0==strcmp22(names[i], name))
             break;
     if(i==count)
-    {   astrcpy22(&names[i], name);
+    {
+        astrcpy22(&names[i], name);
         if(count+1u < SIZEOF(names)) count++;
     }
     return i;

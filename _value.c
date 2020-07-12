@@ -25,8 +25,15 @@ long vSize (const_value v)
         case VAL_ENUMER: return 1;
       //case VAL_STRUCT: return 1+(a & 0xFFFF);
 
-        case VAL_INTFLT:
-        case VAL_NUMBER: return 1+(a & 0x0FFFFFFF);
+        case VAL_NUMBER:
+            a &= 0x0FFFFFFF;
+            switch(a){
+            case 0: return 1+2;
+            case 1: return 1+2;
+            case 2: return 1+4;
+            case 3: return 1+4;
+            default: assert(false); return 1+a;
+            }
 
       //case VAL_DATA:
         case VAL_VECTOR: return 2+v[1];
@@ -187,10 +194,11 @@ value check_arguments (value v, uint32_t c, uint32_t count)
 
 
 #include "_stdio.h"
-value ToValue (value out, int rows, int cols, const void* in, bool setInt)
+value ToValue (value out, int rows, int cols, const void* in, bool setFloat)
 {
-    int i, j, vS = (setInt ? 2 : 3);
-    size_t eS = setInt ? sizeof(SmaInt) : sizeof(SmaFlt);
+    int i, j;
+    size_t s = sizeof(SmaInt);
+    assert(s== sizeof(SmaFlt));
 
     const char* n = (const char*)in;
     bool b = n!=NULL;
@@ -201,11 +209,11 @@ value ToValue (value out, int rows, int cols, const void* in, bool setInt)
         if(rows!=1) v+=2;
         for(i=0; i<rows; i++)
         {
-            *v++ = (VAL_INTFLT<<28) | vS;
-            if(b) memcpy(v, n, eS);
-            else  memset(v, 0, eS);
-            v += vS;
-            n += eS;
+            *v++ = (VAL_NUMBER<<28) | setFloat;
+            if(b) memcpy(v, n, s);
+            else  memset(v, 0, s);
+            v += 2;
+            n += s;
         }
         if(rows!=1) setVector(out, rows, v-out-2);
     }
@@ -218,11 +226,11 @@ value ToValue (value out, int rows, int cols, const void* in, bool setInt)
             v+=2;
             for(j=0; j<cols; j++)
             {
-                *v++ = (VAL_INTFLT<<28) | vS;
-                if(b) memcpy(v, n, eS);
-                else  memset(v, 0, eS);
-                v += vS;
-                n += eS;
+                *v++ = (VAL_NUMBER<<28) | setFloat;
+                if(b) memcpy(v, n, s);
+                else  memset(v, 0, s);
+                v += 2;
+                n += s;
             }
             setVector(w, cols, v-w-2);
         }
@@ -231,8 +239,8 @@ value ToValue (value out, int rows, int cols, const void* in, bool setInt)
     return setOffset(v, v-out);
 }
 
-value integToValue (value out, int rows, int cols, const SmaInt* in) { return ToValue(out, rows, cols, in, 1); }
-value floatToValue (value out, int rows, int cols, const SmaFlt* in) { return ToValue(out, rows, cols, in, 0); }
+value integToValue (value out, int rows, int cols, const SmaInt* in) { return ToValue(out, rows, cols, in, 0); }
+value floatToValue (value out, int rows, int cols, const SmaFlt* in) { return ToValue(out, rows, cols, in, 1); }
 
 
 static void onFail (value v, int rows, int cols, const char* name)
@@ -285,7 +293,7 @@ static bool FromValue (value v, int rows, int cols,  void* out, bool getInt, con
         {
             if(getInt)
             {
-                _floor(setRef(v, vGet(t)));
+                toInt(setRef(v, vGet(t)));
                 if(value_type(v)!=aSmaInt)
                      *outI++ = 0;
                 else *outI++ = (int)getSmaInt(v);

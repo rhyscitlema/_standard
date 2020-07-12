@@ -129,6 +129,7 @@ static inline value greaterOrEqual(value v) { return logical_not(lessThan(v)   )
 
 value toStr (value v);
 value toNum (value v);
+value toInt (value v);
 value toRat (value v); // mainly for Flt to Num, where Num is a Rat
 value toFlt (value v); // mainly for Num to Flt, also for Int to Flt
 
@@ -166,7 +167,7 @@ static inline wchar* intToStr (wchar* out, SmaInt n)
 static inline SmaInt strToInt (const wchar* str, value stack)
 {
     assert(stack!=NULL);
-    _floor(StrToVal(stack, str));
+    toInt(StrToVal(stack, str));
     if(value_type(stack)==aSmaInt)
         return getSmaInt(stack);
     else return 0;

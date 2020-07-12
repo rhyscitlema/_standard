@@ -263,6 +263,7 @@ bool IS_TWSF_ID (int ID)
 
     case Function_tostr:
     case Function_tonum:
+    case Function_toint:
     case Function_torat:
     case Function_toflt:
 
@@ -613,8 +614,9 @@ static const wchar default_twsf_ENGLISH[] =
     "\r\n"
     " 160 tostr      \r\n"
     " 161 tonum      \r\n"
-    " 162 torat      \r\n"
-    " 163 toflt      \r\n"
+    " 162 toint      \r\n"
+    " 163 torat      \r\n"
+    " 164 toflt      \r\n"
     "\r\n"
     " 170 eval       \r\n"
     " 171 call       \r\n"

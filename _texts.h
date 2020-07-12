@@ -132,8 +132,9 @@ enum ID_TWSF
 
     Function_tostr      = 160,
     Function_tonum      = 161,
-    Function_torat      = 162,
-    Function_toflt      = 163,
+    Function_toint      = 162,
+    Function_torat      = 163,
+    Function_toflt      = 164,
 
     Function_eval       = 170,
     Function_call       = 171,

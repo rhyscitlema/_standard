@@ -72,17 +72,15 @@ static SmaFlt ccabs (SmaCom x)
 
 
 
-SmaCom getSmaCom (const_value v)
-{ SmaCom sc; memcpy(&sc, v+1, sizeof(sc)); return sc; }
-
-value setSmaCom (value v, SmaCom sc)
+static inline SmaCom getSmaCom (const_value v) { return *(SmaCom*)(v+1); }
+value setSmaCom (value v, SmaCom si)
 {
     assert(v!=NULL);
-    *v = (VAL_NUMBER<<28) | 6;
-    memcpy(v+1, &sc, sizeof(sc));
-    return setOffset(v+7, 7);
+    v[0] = (VAL_NUMBER<<28) | 3;
+    *(SmaCom*)(v+1) = si;
+    v[5] = (VAL_OFFSET<<28) | 5;
+    return v+6;
 }
-
 value setSmaCom2 (value v, SmaFlt Re, SmaFlt Im) { return setSmaCom(v, Re+Im*I); }
 
 #define OPER_FAIL_(code) v = setMessage(y, code, 0, 0)
@@ -128,7 +126,8 @@ static value OPER_TYPE1 (value v, const_value n, value (*CALL)(value v))
     for(i=0; i<count; i++)
     {
         CALL(setRef(v, n));
-        if(*v>>28) v = vNEXT(v); else return v;
+        if(*v>>28) v = vNEXT(v);
+        else return v;
         n = vNext(n);
     }
     setVector(y, count, v-y-2);
@@ -141,7 +140,7 @@ static value OPER_TYPE2 (value v, const_value n, const_value m, value (*CALL)(va
     uint32_t i, count;
     uint32_t a=*n, b=*m;
 
-    if((a>>28)==VAL_VECTOR) {
+    if((a>>28)==VAL_VECTOR){
          count = VEC_LEN(a);
          if((b>>28)==VAL_VECTOR){
              if((VEC_LEN(b)) != count){
@@ -165,7 +164,8 @@ static value OPER_TYPE2 (value v, const_value n, const_value m, value (*CALL)(va
     for(i=0; i<count; i++)
     {
         CALL(setRef(setRef(v, n), m));
-        if(*v>>28) v = vNEXT(v); else return v;
+        if(*v>>28) v = vNEXT(v);
+        else return v;
         if(a) n = vNext(n);
         if(b) m = vNext(m);
     }
@@ -206,8 +206,8 @@ value _size (value v)
         n += 2; // skip vector header
 
         if(rows==0) cols=0;
-        else
-        {   uint32_t j = *vGet(n);
+        else{
+            uint32_t j = *vGet(n);
             cols = ((j>>28)==VAL_VECTOR) ? VEC_LEN(j) : 1;
             n = vNext(n);
 
@@ -229,12 +229,13 @@ value _size (value v)
 
 static uint32_t get_span (const_value n)
 {
-    uint32_t r = 0;
     uint32_t c = *n;
-    if((c>>28)==VAL_VECTOR)
-    {   c = VEC_LEN(c); // get vector length
+    if((c>>28)==VAL_VECTOR){
+        c = VEC_LEN(c); // get vector length
         n += 2; // skip vector header
     } else c=1;
+
+    uint32_t r = 0;
     while(c--)
     {
         const_value t = vGet(n);
@@ -251,11 +252,12 @@ value _span (value v) { _init_n return setSmaInt(y, get_span(n)); }
 static value get_sum (const_value n, value v)
 {
     uint32_t c = *n;
-    if((c>>28)==VAL_VECTOR)
-    {   c = VEC_LEN(c); // get vector length
+    if((c>>28)==VAL_VECTOR){
+        c = VEC_LEN(c); // get vector length
         if(!c && !*(v-1)) return vcopy(v-1, n);
         n += 2; // skip vector header
     } else c=1;
+
     while(c--)
     {
         const_value t = vGet(n);
@@ -273,12 +275,13 @@ value _sum (value v) { _init_n *v++=0; return vpcopy(y, get_sum(n, v)); }
 
 static const_value _max_min (const_value n, value v, value (*CALL)(value v))
 {
-    const_value w, r = NULL;
     uint32_t c = *n;
-    if((c>>28)==VAL_VECTOR)
-    {   c = VEC_LEN(c); // get vector length
+    if((c>>28)==VAL_VECTOR){
+        c = VEC_LEN(c); // get vector length
         n += 2; // skip vector header
     } else c=1;
+
+    const_value w, r = NULL;
     while(c--)
     {
         w = vGet(n);
@@ -322,8 +325,8 @@ value toStr (value v)
 
     n = vGet(n);
     a = *n;
-    if((a>>28)==VAL_VECTOR)
-    {   a = VEC_LEN(a); // get vector length
+    if((a>>28)==VAL_VECTOR){
+        a = VEC_LEN(a); // get vector length
         n += 2; // skip vector header
     } else a=1;
 
@@ -343,9 +346,11 @@ value toStr (value v)
         d_places = (int)getSmaInt(n);
         --a; break;
     }
-    if(a){
-        const_Str2 out= L"First argument must have integers only:\r\n"
-                        L" (<base> [, <total_places> [, <decimal_places>]]).";
+    if(a)
+    {
+        const_Str2 out =
+            L"First argument must have integers only:\r\n"
+            L" (<base> [, <total_places> [, <decimal_places>]]).";
         v = setMessage(y, 0, 1, &out);
     }
     else v = vpcopy(y, VstToStr(setRef(v,m), info_base, t_places, d_places));
@@ -384,14 +389,13 @@ value indexing (value v)
 {
     _init_n_m
 
-    if(b==VAL_VECTOR)
-    {   b = VEC_LEN(*m); // get count of vector elements
+    if(b==VAL_VECTOR){
+        b = VEC_LEN(*m); // get count of vector elements
         m += 2; // skip vector header
     } else b=1;
 
     int i=b, start=0, stop=0, incre=0;
-    while(true) // not a loop
-    {
+    do{
         if(value_type(m)!=aSmaInt) break;
         start = (int)getSmaInt(m);
         if(--i==0) break;
@@ -406,14 +410,14 @@ value indexing (value v)
         if(value_type(m)!=aSmaInt) break;
         stop = (int)getSmaInt(m);
         --i; break;
-    }
-    while(true) // not a loop
-    {
+    }while(0);
+
+    do{
         if(i) { v = setError(y, L"Indexing argument must be at most 3 integers."); break; }
 
         i = a==aString;
-        if(i || a==VAL_VECTOR)
-        {   a = VEC_LEN(*n); // get vector length
+        if(i || a==VAL_VECTOR){
+            a = VEC_LEN(*n); // get vector length
             n += 2; // skip vector header
         } else a=1;
         if(i) a-=1; // -1 so to skip '\0'
@@ -424,12 +428,13 @@ value indexing (value v)
         {
             if(i) // if indexing a null-terminated array of characters
                 v = setCharac(y, WCHAR(n)[start]);
-            else if(start==a){ // if index == length of vector
+            else if(start==a) // if index == length of vector
+            {
                 setVector(y, 0, 0);
                 v = setOffset(y+2, 2);
             }
-            else
-            {   while(start--) n = vNext(n);
+            else{
+                while(start--) n = vNext(n);
                 v = vcopy(y, vGet(n));
             }
             break;
@@ -474,12 +479,11 @@ value indexing (value v)
             setVector(y, r, v-y-2);
             v = setOffset(v, v-y);
         }
-        else
-        {   v = setError(y, L"Negative incrementation not yet available.");
+        else{
+            v = setError(y, L"Negative incrementation not yet available.");
             // TODO: NOTE: no vectored indexing, must use range() then...?!
         }
-    break;
-    }
+    }while(0);
     return v;
 }
 
@@ -496,8 +500,8 @@ value _range (value v)
 
     n = vGet(n);
     uint32_t b = *n; // n points at the incrementing value
-    if((b>>28)==VAL_VECTOR) // if a vector
-    {   b = VEC_LEN(b); // get vector length
+    if((b>>28)==VAL_VECTOR){ // if a vector
+        b = VEC_LEN(b); // get vector length
         n += 2; // skip vector header
     } else b=1;
     if(b==0) return vcopy(y,start);
@@ -522,8 +526,8 @@ value _range (value v)
 
     lessThan(setSmaInt(setRef(v, sum), 0));
     if(!isBool(v)) v=0; // if result is not a boolean
-    else
-    {   value (*check)(value) = (*v & 1) ? lessThan : greaterThan;
+    else{
+        value (*check)(value) = (*v & 1) ? lessThan : greaterThan;
 
         v += 2; // reserve space for vector header
         v = vcopy(v, start); // deal with case a=0
@@ -566,8 +570,8 @@ value _vector (value v)
 
     n = vGet(n);
     uint32_t b = *n; // n points at the incrementing value
-    if((b>>28)==VAL_VECTOR) // if a vector
-    {   b = VEC_LEN(b); // get vector length
+    if((b>>28)==VAL_VECTOR){ // if a vector
+        b = VEC_LEN(b); // get vector length
         n += 2; // skip vector header
     } else b=1;
     if(b==0) return vcopy(y,start);
@@ -656,7 +660,8 @@ value fullfloor (value v)
         }
     }
     else
-    {   for(n=len; n!=0; n--, N++, eca.stack++)
+    {
+        for(n=len; n!=0; n--, N++, eca.stack++)
         {
             y = *N;
             if(!isVector(y))
@@ -704,7 +709,18 @@ value dotproduct (value v)
 
 //---------------------------------------------------------------
 
-value _pos (value v) { return v; }
+value _pos (value v)
+{
+    init_n(_neg)
+    switch(a)
+    {
+        case aSmaInt: v = setSmaInt(y, +getSmaInt(n)); break;
+        case aSmaFlt: v = setSmaFlt(y, +getSmaFlt(n)); break;
+        case aSmaCom: v = setSmaCom(y, +getSmaCom(n)); break;
+        default: OPER_FAIL break;
+    }
+    return v;
+}
 
 value _neg (value v)
 {
@@ -761,7 +777,8 @@ value transpose (value v)
     for(j=0; j<cols; j++)
     {
         value u=0;
-        if(rows>1){
+        if(rows>1)
+        {
             u=w;
             w+=2;
         }
@@ -859,8 +876,9 @@ value __mul (value v)
         argv[argc++] = TIS2(3, colM);
         error = MatrixMult_IsInvalid;
     }
-    if(error)
-    {   argv[0] = TWST(error);
+
+    if(error){
+        argv[0] = TWST(error);
         v = setMessage(y, error, argc, argv);
     }
     return v;
@@ -1006,8 +1024,7 @@ value _cbrt (value v)
     {
         case aSmaInt: v = setSmaFlt(y, pow(getSmaInt(n), 1/3.0)); break;
         case aSmaFlt: v = setSmaFlt(v, pow(getSmaFlt(n), 1/3.0)); break;
-        case aSmaCom: if(COMPLEX) {
-                      v = setSmaCom(y, _cpow(getSmaCom(n), 1/3.0)); } break;
+        case aSmaCom: if(COMPLEX) { v = setSmaCom(y, _cpow(getSmaCom(n), 1/3.0)); break; }
         default: OPER_FAIL break;
     }
     return v;
@@ -1023,11 +1040,11 @@ value _sqrt (value v)
     {
         case aSmaInt: sf = getSmaInt(n); b=1; break;
         case aSmaFlt: sf = getSmaFlt(n); b=1; break;
-        case aSmaCom: if(COMPLEX) { v = setSmaCom(y, _csqrt(getSmaCom(n))); } break;
+        case aSmaCom: if(COMPLEX) { v = setSmaCom(y, _csqrt(getSmaCom(n))); break; }
         default: OPER_FAIL break;
     }
-    if(b)
-    {   if(sf>=0) v = setSmaFlt(y, sqrt(sf));
+    if(b){
+        if(sf>=0) v = setSmaFlt(y, sqrt(sf));
         else v = setSmaCom(y, sqrt(-sf)*I);
     }
     return v;
@@ -1044,15 +1061,17 @@ value _log (value v)
     {
         case aSmaInt: sf = getSmaInt(n); b=1; break;
         case aSmaFlt: sf = getSmaFlt(n); b=1; break;
-        case aSmaCom: if(COMPLEX) { sc = getSmaCom(n); b=2; } break;
+        case aSmaCom: if(COMPLEX) { sc = getSmaCom(n); b=2; break; }
         default: OPER_FAIL break;
     }
     if(b==1)
-    {   if(sf>0) v = setSmaFlt(y, log(sf));
+    {
+        if(sf>0) v = setSmaFlt(y, log(sf));
         else OPER_FAIL_(Argument_OutOf_Domain);
     }
     else if(b==2)
-    {   if(ccabs(sc)>0) v = setSmaCom(y, _clog(sc));
+    {
+        if(ccabs(sc)>0) v = setSmaCom(y, _clog(sc));
         else OPER_FAIL_(Argument_OutOf_Domain);
     }
     return v;
@@ -1072,7 +1091,7 @@ static value TYPE1_OPR (value v,
     {
         case aSmaInt: v = setSmaFlt(y, SF_CALL(getSmaInt(n))); break;
         case aSmaFlt: v = setSmaFlt(y, SF_CALL(getSmaFlt(n))); break;
-        case aSmaCom: if(COMPLEX) { v = setSmaCom(y, SC_CALL(getSmaCom(n))); } break;
+        case aSmaCom: if(COMPLEX) { v = setSmaCom(y, SC_CALL(getSmaCom(n))); break; }
         default: OPER_FAIL break;
     }
     return v;
@@ -1091,15 +1110,17 @@ static value INV_TRIGO (value v,
     {
         case aSmaInt: sf = getSmaInt(n); b=1; break;
         case aSmaFlt: sf = getSmaFlt(n); b=1; break;
-        case aSmaCom: if(COMPLEX) { sc = getSmaCom(n); b=2; } break;
+        case aSmaCom: if(COMPLEX) { sc = getSmaCom(n); b=2; break; }
         default: OPER_FAIL break;
     }
     if(b==1)
-    {   if(-1 <= sf && sf <= 1) v = setSmaFlt(y, SF_CALL(sf));
+    {
+        if(-1 <= sf && sf <= 1) v = setSmaFlt(y, SF_CALL(sf));
         else OPER_FAIL_(Argument_OutOf_Domain);
     }
     else if(b==2)
-    {   sf = ccabs(sc);
+    {
+        sf = ccabs(sc);
         if(-1 <= sf && sf <= 1) v = setSmaCom(y, SC_CALL(sc));
         else OPER_FAIL_(Argument_OutOf_Domain);
     }
@@ -1142,7 +1163,7 @@ value _atanh (value v) { return TYPE1_OPR (v, _atanh, atanh, _catanh); }
         case aSmaInt: v = setSmaInt(y, SF_CALL(getSmaInt(n))); break; \
         case aSmaFlt: v = setSmaFlt(y, SF_CALL(getSmaFlt(n))); break; \
         case aSmaCom: v = setSmaFlt(y, SC_CALL(getSmaCom(n))); break; \
-        /* here there is conversion from complex to float */ \
+        /* line above has conversion from complex to float */ \
         default: OPER_FAIL break; \
     } \
     return v; \
@@ -1180,39 +1201,42 @@ value _proj (value v) TYPE1_COM (v, _proj, sf_proj, _cproj)
 /* ----------- Integer operations ------------------ */
 
 value _idiv (value v)
-{ return _floor(_div(v)); }
+{ return toInt(_div(v)); }
 
 value _isqrt  (value v)
-{ return _floor(_sqrt(v)); }
-
+{ return toInt(_sqrt(v)); }
 
 value _ceil (value v)
 {
-    SmaFlt sf;
     init_n(_ceil)
     switch(a)
     {
         case aSmaInt: v = setSmaInt(y, getSmaInt(n)); break; // TODO: this line is due to setRef() in OPER_TYPE1
-        case aSmaFlt: sf = getSmaFlt(n);
-                      v = setSmaInt(y, ceil(sf));
-                      break;
+        case aSmaFlt: v = setSmaFlt(y, ceil(getSmaFlt(n))); break;
         default: OPER_FAIL break;
     }
     return v;
 }
 
-
 value _floor (value v)
 {
-    SmaFlt sf;
     init_n(_floor)
     switch(a)
     {
-        case aSmaInt: v = setSmaInt(y, getSmaInt(n)); break; // TODO: this line is due to setRef() in OPER_TYPE1
-        case aSmaFlt: sf = getSmaFlt(n);
-                      if(sf>0) sf += 0.000001;
-                      v = setSmaInt(y, floor(sf));
-                      break;
+        case aSmaInt: v = setSmaInt(y, getSmaInt(n)); break;
+        case aSmaFlt: v = setSmaFlt(y, floor(getSmaFlt(n))); break;
+        default: OPER_FAIL break;
+    }
+    return v;
+}
+
+value toInt (value v)
+{
+    init_n(toInt)
+    switch(a)
+    {
+        case aSmaInt: v = setSmaInt(y, getSmaInt(n)); break;
+        case aSmaFlt: v = setSmaInt(y, FltToInt(getSmaFlt(n))); break;
         default: OPER_FAIL break;
     }
     return v;
@@ -1306,7 +1330,7 @@ value _ilog (value v)
         case MIX(aSmaInt, aSmaInt):
             v = _log(setRef(v,m));
             v = _log(setRef(v,n));
-            v = _floor(_div(v));
+            v = toInt(_div(v));
             v = vpcopy(y, v);
             break;
         default: OPER_FAIL_(Only_On_Integer_Number); break;
@@ -1325,7 +1349,8 @@ value _ilog (value v)
     switch(MIX(a,b)) \
     { \
         case MIX(aSmaInt, aSmaInt): \
-            N = getSmaInt(n); M = getSmaInt(m); \
+            N = getSmaInt(n); \
+            M = getSmaInt(m); \
             v = setSmaInt(y, SI_CALL(N, M)); \
             break; \
         default: OPER_FAIL_(Only_On_Integer_Number); break; \
@@ -1385,36 +1410,30 @@ value greaterThan (value v)
     return vpcopy(y, v);
 }
 
-#define EQUAL_OPR(v, CALL, SX_CALL, STR_CALL) \
-{ \
-    init_n_m(CALL) \
-    bool r = false; \
-    switch(MIX(a,b)) \
-    { \
-        case MIX(aSmaInt, aSmaInt): r = SX_CALL(getSmaInt(n), getSmaInt(m)); break; \
-        case MIX(aSmaInt, aSmaFlt): r = SX_CALL(getSmaInt(n), getSmaFlt(m)); break; \
-        case MIX(aSmaInt, aSmaCom): r = SX_CALL(getSmaInt(n), getSmaCom(m)); break; \
- \
-        case MIX(aSmaFlt, aSmaInt): r = SX_CALL(getSmaFlt(n), getSmaInt(m)); break; \
-        case MIX(aSmaFlt, aSmaFlt): r = SX_CALL(getSmaFlt(n), getSmaFlt(m)); break; \
-        case MIX(aSmaFlt, aSmaCom): r = SX_CALL(getSmaFlt(n), getSmaCom(m)); break; \
- \
-        case MIX(aSmaCom, aSmaInt): r = SX_CALL(getSmaCom(n), getSmaInt(m)); break; \
-        case MIX(aSmaCom, aSmaFlt): r = SX_CALL(getSmaCom(n), getSmaFlt(m)); break; \
-        case MIX(aSmaCom, aSmaCom): r = SX_CALL(getSmaCom(n), getSmaCom(m)); break; \
- \
-        case MIX(aString, aString): r = STR_CALL(n,m); break; \
-        default: break; \
-    } \
-    return setBool(y, r); \
+
+value equalTo (value v)
+{
+    init_n_m(equalTo)
+    bool r = false;
+    switch(MIX(a,b))
+    {
+        case MIX(aSmaInt, aSmaInt): r = getSmaInt(n) == getSmaInt(m); break;
+        case MIX(aSmaInt, aSmaFlt): r = getSmaInt(n) == getSmaFlt(m); break;
+        case MIX(aSmaInt, aSmaCom): r = getSmaInt(n) == getSmaCom(m); break;
+
+        case MIX(aSmaFlt, aSmaInt): r = getSmaFlt(n) == getSmaInt(m); break;
+        case MIX(aSmaFlt, aSmaFlt): r = getSmaFlt(n) == getSmaFlt(m); break;
+        case MIX(aSmaFlt, aSmaCom): r = getSmaFlt(n) == getSmaCom(m); break;
+
+        case MIX(aSmaCom, aSmaInt): r = getSmaCom(n) == getSmaInt(m); break;
+        case MIX(aSmaCom, aSmaFlt): r = getSmaCom(n) == getSmaFlt(m); break;
+        case MIX(aSmaCom, aSmaCom): r = getSmaCom(n) == getSmaCom(m); break;
+
+        case MIX(aString, aString): r = 0==strcmp22(getStr2(n), getStr2(m)); break;
+        default: break;
+    }
+    return setBool(y, r);
 }
-
-#define sx_Equal(n,m) (n == m)
-
-static inline bool str_Equal(const_value n, const_value m)
-{ return 0==strcmp22( getStr2(n), getStr2(m) ); }
-
-value equalTo (value v) EQUAL_OPR (v, equalTo, sx_Equal, str_Equal)
 
 value sameAs (value v)
 {
@@ -1432,28 +1451,44 @@ value sameAs (value v)
 
 /* --------- Logical Operations ------------------------ */
 
-#define sx__or(n,m) (n || m)
-#define sx_and(n,m) (n && m)
+#define lenString(n) ((*n & 0x0FFFFFFF)-1) // get string length
 
-#define SS(n) (*n & 0x0FFFFFFF)
-#define str__or(n,m) (SS(n) || SS(m))
-#define str_and(n,m) (SS(n) && SS(m))
+#define OR_AND(CALL, opr) \
+{ \
+    init_n_m(CALL) \
+    switch(a) \
+    { \
+        case aString: a = lenString(n)!=0; break; \
+        case aSmaInt: a = getSmaInt(n)!=0; break; \
+        case aSmaFlt: a = getSmaFlt(n)!=0; break; \
+        case aSmaCom: a = getSmaCom(n)!=0; break; \
+        default: a=false; break; \
+    } \
+    switch(b) \
+    { \
+        case aString: b = lenString(m)!=0; break; \
+        case aSmaInt: b = getSmaInt(m)!=0; break; \
+        case aSmaFlt: b = getSmaFlt(m)!=0; break; \
+        case aSmaCom: b = getSmaCom(m)!=0; break; \
+        default: b=false; break; \
+    } \
+    return setBool(y, a opr b); \
+}
 
-value logical_or  (value v) EQUAL_OPR (v, logical_or , sx__or, str__or)
-value logical_and (value v) EQUAL_OPR (v, logical_and, sx_and, str_and)
+value logical_or  (value v) OR_AND(logical_or , ||)
+value logical_and (value v) OR_AND(logical_and, &&)
 value logical_not (value v)
 {
     init_n(logical_not)
-    bool r = true;
     switch(a)
     {
-        case aString: r = SS(n)==0; break;
-        case aSmaInt: r = getSmaInt(n)==0; break;
-        case aSmaFlt: r = getSmaFlt(n)==0; break;
-        case aSmaCom: r = getSmaCom(n)==0; break;
-        default: break;
+        case aString: a = lenString(n)!=0; break;
+        case aSmaInt: a = getSmaInt(n)!=0; break;
+        case aSmaFlt: a = getSmaFlt(n)!=0; break;
+        case aSmaCom: a = getSmaCom(n)!=0; break;
+        default: a=false; break;
     }
-    return setBool(y, r);
+    return setBool(y, !a);
 }
 
 
@@ -1650,7 +1685,8 @@ value StrToVal (value out, const_Str2 str)  // single output value
                 out = setMessage(out, 0, 2, argv);
             }
             else
-            {   *w = '\0';
+            {
+                *w = '\0';
                 out = onSetStr2(out, w);
             }
         }
@@ -1690,15 +1726,14 @@ value StrToVal (value out, const_Str2 str)  // single output value
         {
             for(    ; i < len; i++) { c = s[i]; if(c=='_') continue; if(c=='.') { if(++dp==2) break; } StrToIntGet(10, '0', '9', 0) else { dp=3; break; } }
         }
-
         else *argv = L"Number must not begin with a decimal point.";
         if(c=='.'
         && dp==1) *argv = L"Number must not end with a decimal point.";
         if(dp==2) *argv = L"Number has more than one decimal point.";
         if(dp==3) *argv = L"Number contains an invalid digit.";
         if(dp==4) *argv = L"Number has too many digits; BigNum is not yet supported.";
-        if(*argv) out = setMessage(out, 0, 1, argv);
 
+        if(*argv) out = setMessage(out, 0, 1, argv);
         else{
             if(neg) nume = -nume;
             if(deno==1) out = setSmaInt(out, nume);
@@ -1759,6 +1794,7 @@ static wchar* FltToStrGet (wchar* out, SmaFlt n, int base)
     if(n<0) { n=-n; *out++ = '-'; }         // make n positive
     w = (SmaInt)n;                          // get whole part of n
     if(w<0) return strcpy21(out, "inf");    // if n is too large
+
     n = n-w;                                // get decimal part of n
     d = (SmaInt)((1.0+n)*exp7);             // scale and get it into integer
     if(d%base >= base/2) d += base/2;       // round the last decimal digit
@@ -1772,8 +1808,8 @@ static wchar* FltToStrGet (wchar* out, SmaFlt n, int base)
     if(d==0) return ++out;
 
     i = 1 + (base==10 ? 0 : 2);
-    while(out[i]!=0)            // shift so to remove
-    {   *out = out[i];          // the characters 0x1
+    while(out[i]!=0){           // shift so to remove
+        *out = out[i];          // the characters 0x1
         out++;
     }
     // remove trailing zeros
@@ -1800,8 +1836,8 @@ static Str2 ValToStr (const_value n, Str2 output, int base, int t_places, int d_
   else*/ if(type==aSmaInt) IntToStrGet (out, getSmaInt(n), base);
     else if(type==aSmaFlt) FltToStrGet (out, getSmaFlt(n), base);
     else if(type!=aSmaCom) strcpy21(str, "Error in ValToStr().");
-    else
-    {   FltToStrGet (out, creal(getSmaCom(n)), base);
+    else{
+        FltToStrGet (out, creal(getSmaCom(n)), base);
         SmaFlt sf = cimag(getSmaCom(n));
 
         if((out[i]=='0' && out[i+1]==0)
@@ -1809,8 +1845,8 @@ static Str2 ValToStr (const_value n, Str2 output, int base, int t_places, int d_
         {
             *out = 0; // if n == 0+bi
 
-            if(sf<0)
-            {   sf = -sf;
+            if(sf<0){
+                sf = -sf;
                 *out++ = '-';
             }
             temp[i]=0;
@@ -1825,10 +1861,11 @@ static Str2 ValToStr (const_value n, Str2 output, int base, int t_places, int d_
         {
             out += strlen2(out); // if n == a+bi
 
-            if(sf<0)
-            {   sf = -sf;
+            if(sf<0){
+                sf = -sf;
                 *out++ = '-';
             } else *out++ = '+';
+
             temp[i]=0;
             FltToStrGet (temp, sf, base);
 
@@ -1849,8 +1886,8 @@ static Str2 VstToStrGet (const_value v, Str2 out, int info_base, int t_places, i
     enum ValueType type = *v >> 28;
 
     uint32_t count;
-    if(type==VAL_VECTOR)
-    {   count = VEC_LEN(*v); // get vector length
+    if(type==VAL_VECTOR){
+        count = VEC_LEN(*v); // get vector length
         v += 2; // skip vector header
     } else count=1;
 
@@ -1892,15 +1929,15 @@ static Str2 VstToStrGet (const_value v, Str2 out, int info_base, int t_places, i
             case VAL_CHARAC : s = "wchar"  ; break;
             case VAL_POINTER: s = "pointer"; break;
             default:
-            switch(value_type(v))
-            {
-            case aSmaInt    : s = "integer"; break;
-            case aSmaFlt    : s = "float"  ; break;
-            case aSmaRat    : s = "ratio"  ; break;
-            case aSmaCom    : s = "complex"; break;
-            case aString    : s = "string" ; break;
-            default: s="???"; break;
-            }
+                switch(value_type(v))
+                {
+                case aSmaInt    : s = "integer"; break;
+                case aSmaFlt    : s = "float"  ; break;
+                case aSmaRat    : s = "ratio"  ; break;
+                case aSmaCom    : s = "complex"; break;
+                case aString    : s = "string" ; break;
+                default: s="???"; break;
+                }
             }
             out = strcpy21(out,s);
         }
@@ -1911,7 +1948,8 @@ static Str2 VstToStrGet (const_value v, Str2 out, int info_base, int t_places, i
         else if(type==VAL_CHARAC)
         {
             wchar c = (wchar)(*v & 0x0FFFFFFF);
-            if(info & PUT_ESCAPE){
+            if(info & PUT_ESCAPE)
+            {
                 *out++ = '\'';
                 if(c=='\\' || c=='\'') { *out++ = '\\'; *out++ =  c ; }
                 else if(isPrintableASCII(c)) *out++ = c;
@@ -1934,7 +1972,8 @@ static Str2 VstToStrGet (const_value v, Str2 out, int info_base, int t_places, i
             if(info & PUT_ESCAPE)
             {
                 *out++ = '"';
-                if(isStr2(v)){
+                if(isStr2(v))
+                {
                     const wchar* s = getStr2(v);
                     for(; *s; s++)
                     {
