@@ -63,7 +63,13 @@ value FileOpen1 (const_Str1 filename, value stack)
 
 value FileSave1 (const_Str1 filename, value stack)
 {
+	if(VERROR(stack)) return stack;
 	value y = vPrev(stack);
+	const_value n = vGet(y);
+	if(!isStr1(n)) return setError(y, L"Error, argument must be a UTF8 string.");
+	const_Str1 str = getStr1(n);
+	long size = ARRAY_LEN(*n);
+
 	FILE* file = fopen(filename, "wb");
 	if(file==NULL)
 	{
@@ -72,12 +78,6 @@ value FileSave1 (const_Str1 filename, value stack)
 		argv[1] = C21(filename);
 		return setMessage(y, 0, 2, argv);
 	}
-	const_value n = vGet(y);
-	const_Str1 str = getStr1(n);
-
-	// strlen1(str) not used due to inner '\0', but exclude last '\0'
-	long size = (*n & 0x0FFFFFFF)-1;
-
 	fwrite(str, 1, size, file);
 	fclose(file);
 	return setBool(y, true);
@@ -253,7 +253,7 @@ value FileOpen2 (const_Str2 filename, value stack)
 	if(VERROR(v)) return v;
 
 	const_Str1 in = getStr1(stack);
-	long size = (*stack & 0x0FFFFFFF)-1;
+	long size = ARRAY_LEN(*stack);
 	Str2 out = (wchar*)(stack+2);
 
 	unsigned char* s = (unsigned char*)in;
@@ -289,6 +289,7 @@ value FileSave2 (const_Str2 filename, value stack)
 	if(VERROR(stack)) return stack;
 	value y = vPrev(stack);
 	const_value n = vGet(y);
+	if(!isStr2(n)) return setError(y, L"Error, argument must be a string.");
 	const_Str2 content = getStr2(n);
 
 	long size=0;
@@ -298,7 +299,7 @@ value FileSave2 (const_Str2 filename, value stack)
 		out = strcpy12(out, content);
 	else
 	{
-		size = 1+ (*n & 0x0FFFFFFF)-1; // 1+ for the BOM, -1 for the '\0'
+		size = 1+ ARRAY_LEN(*n); // 1+ for the BOM
 		out[0] = (char)0xFF; // assume UTF-16 little-endian
 		out[1] = (char)0xFE; // and provide the BOM of it
 		docopy((wchar*)out, content, size); // convert if(g_type==3)
@@ -310,6 +311,6 @@ value FileSave2 (const_Str2 filename, value stack)
 	wchar wstr[MAX_PATH_LEN+1];
 	const_Str1 filename1 = C12(add_path_to_file_name(filename, wstr));
 
-	return vpcopy(y, FileSave1(filename1, stack));
+	return vPrevCopy(y, FileSave1(filename1, stack));
 }
 

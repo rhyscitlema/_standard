@@ -63,7 +63,7 @@ int evaluate (int count, char** input)
 			try = p-p[3];
 			P   = p-p[2];
 			p   = p-p[1];
-			v = vpcopy(p, v);
+			v = vPrevCopy(p, v);
 			if(in==NULL) break;
 			else continue;
 		}
@@ -76,8 +76,9 @@ int evaluate (int count, char** input)
 		else if(w[0]=='p' && w[1]=='_') // if a parameter
 		{
 			uint32_t i = w[2] - '0';
-			if(i<P[0]) v = vcopy(v, P - *(P-1-i));
-			else{
+			if(i<P[0])
+				v = vCopy(v, P - *(P-1-i));
+			else {
 				argv[0] = L"Request for parameter %s not in range [0, %s).";
 				argv[1] = TIS2(0,i);
 				argv[2] = TIS2(0,P[0]);
@@ -105,7 +106,7 @@ int evaluate (int count, char** input)
 
 			int i;
 			if(!C) i=0; // if a variable instead.
-			else if((*n>>28)==VAL_VECTOR){
+			else if(VTYPE(*n)==VALUE_VECTOR){
 				i = *n & 0x0FFFFFFF;
 				n += 2;
 			} else i=1;
@@ -151,7 +152,7 @@ int evaluate (int count, char** input)
 			const_value n = vGet(v);
 			if(!isBool(n)) // if result is not boolean
 			{
-				assert((*n>>28)==VAL_VECTOR);
+				assert(VTYPE(*n)==VALUE_VECTOR);
 				argv[0] = TWST(Condition_IsNot_Single);
 				v = setMessage(v, 0, 1, argv);
 			}
@@ -308,7 +309,7 @@ int evaluate (int count, char** input)
 
 		const_Str2 out;
 		if(VERROR(v)) out = getMessage(vGetPrev(v));
-		else out = getStr2(vGetPrev(VstToStr(setRef(v, vPrev(v)), PUT_NEWLINE|0, -1,-1)));
+		else out = getStr2(vGetPrev(VstToStr(setRef(v, vPrev(v)), TOSTR_NEWLINE)));
 		printf("[%s] ", w);
 		puts2(out);
 
@@ -356,3 +357,24 @@ int main (int argc, char** argv)
 	return 0;
 }
 
+
+void user_alert (const wchar* title, const wchar* message)
+{
+	#ifdef LOCAL_USER
+	printf("\r\n>>> "); puts2(title); puts2(message);
+	printf("Press Enter to continue..."); getchar();
+	#endif
+}
+
+bool user_confirm (const wchar* title, const wchar* message)
+{
+	#ifdef LOCAL_USER
+	char buffer[10];
+	printf("\r\n>>> "); puts2(title); puts2(message);
+	printf("Enter ok / <anything> : ");
+	if(!fgets(buffer, sizeof(buffer), stdin)) return false;
+	return 0==strcmp(buffer, "ok\n");
+	#else
+	return false;
+	#endif
+}

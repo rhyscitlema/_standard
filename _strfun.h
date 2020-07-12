@@ -16,7 +16,7 @@ static inline Str3 sPrev (Str3 s) { s.ptr = s.ptr->prev; return s; }
 
 static inline bool strEnd1 (const_Str1 s) { return !s || !*s ; }
 static inline bool strEnd2 (const_Str2 s) { return !s || !*s ; }
-static inline bool strEnd3 (const_Str3 s) { return !s.ptr || (s.end ? s.ptr==s.end : sChar(s)=='\0'); }
+static inline bool strEnd3 (const_Str3 s) { return !s.ptr || sChar(s)=='\0' || s.ptr==s.end; }
 
 
 /* n = length of string, excluding '\0' */
@@ -40,6 +40,7 @@ const_Str2 C23 (const_Str3 in);
 const_Str3 C31 (const_Str1 in); // for ASCII char only
 void CXX_clean(); // preferably called upon software exit
 
+/* convert string from type 7 to type 3 */
 static inline Str3 C37 (lchar* lstr) { Str3 s = {lstr,NULL}; return s; }
 
 /* Temporal Integer to String - See implementation in _strfun.c */
@@ -72,7 +73,7 @@ static inline void astrcpy21 (Str2* outp, const_Str1 in) { if(outp){ *outp = str
 static inline void astrcpy22 (Str2* outp, const_Str2 in) { if(outp){ *outp = str2_alloc(*outp, strlen2 (in)); strcpy22(*outp, in); }}
 
 /* str must point to memory of size = (n = strlen2(in)+1) * sizeof(lchar) */
-Str3 set_lchar_array (lchar* str, long n, const_Str2 in, const_Str2 source);
+Str3 set_lchar_array (lchar* array, long n, const_Str2 in, const_Str2 source);
 Str3 astrcpy32 (Str3 out, const_Str2 in, const_Str2 source);
 
 

@@ -12,55 +12,62 @@ long vSize (const_value v)
 {
 	if(!v) return 0;
 	uint32_t a = *v;
-	switch(a>>28)
+	switch(VTYPE(a))
 	{
-		case VAL_MESSAGE: return a ? 1+(a & 0xFFFF) : 0;
-		case VAL_OPERAT: return 1+(a & 0xFFFF);
+		case VALUE_MESSAGE: a = a ? 1+(a & 0xFFFF) : 0; break;
+		case VALUE_OPERAT: a = 1+(a & 0xFFFF); break;
 
-		case VAL_OFFSET: assert((a>>28)!=VAL_OFFSET); return 0;
-		//case VAL_OFFSAT: assert((a>>28)!=VAL_OFFSAT); return 0;
-		case VAL_POINTER: assert(!(a & 0x08000000)); return 3;
+		case VALUE_OFFSET: assert(VTYPE(a)!=VALUE_OFFSET); a=0; break;
+		//case VALUE_OFFSAT: assert(VTYPE(a)!=VALUE_OFFSAT); a=0; break;
+		case VALUE_POINTER: assert(!(a & 0x08000000)); a=3; break;
 
-		case VAL_CHARAC: return 1;
-		case VAL_ENUMER: return 1;
-		//case VAL_STRUCT: return 1+(a & 0xFFFF);
+		case VALUE_CHARAC: a=1; break;
+		case VALUE_ENUMER: a=1; break;
+		//case VALUE_STRUCT: a = 1+(a & 0xFFFF); break;
 
-		case VAL_NUMBER:
+		case VALUE_NUMBER:
 			a &= 0x0FFFFFFF;
 			switch(a){
-			case 0: return 1+2;
-			case 1: return 1+2;
-			case 2: return 1+4;
-			case 3: return 1+4;
-			default: assert(false); return 1+a;
-			}
+			case 0: a = 1 + sizeof(SmaInt)/sizeof(uint32_t) ; break; // if aSmaInt
+			case 1: a = 1 + sizeof(SmaFlt)/sizeof(uint32_t) ; break; // if aSmaFlt
+			case 2: a = 1 + 4 ; break; // if aSmaRat
+			case 3: a = 1 + 4 ; break; // if aSmaCom
+			default: assert(false); a = 1+a; break;
+			}break;
 
-		//case VAL_DATA:
-		case VAL_VECTOR: return 2+v[1];
+		//case VALUE_DATA:
+		case VALUE_VECTOR: a = 2+v[1]; break;
 
-		case VAL_ARRRAY: { v++; // skip to element ValueType
-			uint32_t b = *v;
-			assert((b>>28)==VAL_CHARAC); // TODO: for now strings are the only arrays.
-			a &= 0x0FFFFFFF; // get number of array elements
-			if((b>>28)==VAL_ENUMER)
+		case VALUE_ARRRAY:
+		{
+			uint32_t b = v[1];
+			assert(VTYPE(b)==VALUE_CHARAC); // TODO: for now strings are the only arrays.
+			a = ARRAY_LEN(a); // get number of array elements, excluding '\0'
+			if(VTYPE(b)==VALUE_ENUMER)
 			{
 				b = ((b>>16)&0x0FFF); // get 12-bit type
 			     if(b==0) a = (a+31)/32; // if array of 1-bit boolean
-			else if(b==1) a = (a+3)/4;   // if array of 8-bit UTF8 char
+			else if(b==1) a = (a+1+3)/4; // if array of 8-bit UTF8 char, +1 to include '\0'
 			else a = (a+1)/2; // else if any other enumeration value = 16-bit
 			}
-			else if((b>>28)==VAL_CHARAC
-			     && sizeof(wchar_t)==2)
-				a = (a+1)/2;
-			else a *= vSize(v);
-			return 2+a; }
+			else if(VTYPE(b)==VALUE_CHARAC)  // if array of 28-bit UTF32 char
+			{
+				a += 1; // +1 to include '\0'
+				if(sizeof(wchar_t)==2) a = (a+1)/2;
+				assert(sizeof(wchar_t)==2 || sizeof(wchar_t)==4);
+			}
+			else a *= vSize(v+1);
+			a = 2+a;
+			break;
+		}
 
-		default: assert(false); return 0;
+		default: assert(false); a=0; break;
 	}
+	return a;
 }
 
 
-value vcopy (value out, const_value n)
+value vCopy (value out, const_value n)
 {
 	if(out){
 		if(n){
@@ -71,8 +78,8 @@ value vcopy (value out, const_value n)
 	}return out;
 }
 
-value vpcopy (value out, value v)
-{ return vcopy(out, vGetPrev(v)); }
+value vPrevCopy (value out, value v)
+{ return vCopy(out, vGetPrev(v)); }
 
 
 value tovector (value v, uint32_t count)
@@ -80,10 +87,17 @@ value tovector (value v, uint32_t count)
 	assert(count>=2);
 	if(VERROR(v)) return v;
 	if(count==1) return v;
-	if(count==0) { setVector(v,0,0); return setOffset(v+2,2); }
+	if(count==0) {
+		setVector(v,0,0);
+		return setOffset(v+2,2);
+	}
 
 	uint32_t i, s, *n, *y, *t;
-	for(i=0; i<count; i++) { assert(v==vnext(vPrev(v))); v = vPrev(v); }
+
+	for(i=0; i<count; i++) {
+		assert(v==vnext(vPrev(v)));
+		v = vPrev(v);
+	}
 	y = n = v;
 	for(i=0; i<count; i++)
 	{
@@ -103,10 +117,10 @@ value tovector (value v, uint32_t count)
 static value onSetMsg (value v, int code, int argc, Str2 out, Str2 end)
 {
 	if(argc) assert(*out && *end=='\0');
-	long size = argc ? (end-out)+1 : 0;
+	long size = argc ? (end-out)+1 : 0; // +1 to include '\0'
 	if(sizeof(wchar_t)==2) size = (size+1)/2;
 	assert(!(code & ~0x0FFF) && !(size & ~0xFFFF));
-	*v = (VAL_MESSAGE<<28) | (code<<16) | size;
+	*v = (VALUE_MESSAGE<<28) | (code<<16) | size;
 	return setOffset(v+1+size, 1+size);
 }
 
@@ -130,7 +144,7 @@ const_Str2 getMessage (const_value v)
 {
 	const_Str2 s=NULL;
 	uint32_t a = v ? *v : 0;
-	assert((a>>28)==VAL_MESSAGE);
+	assert(VTYPE(a)==VALUE_MESSAGE);
 	if(!a);
 	else if(a & 0xFFFF)
 		s = (wchar*)(v+1);
@@ -149,19 +163,20 @@ const_Str2 getMessage (const_value v)
 value onSetStr1 (value v, const_Str1 end)
 {
 	assert(*end=='\0');
-	long size = end - (Str1)(v+2) + 1; // +1 to include '\0'
-	v[0] = (VAL_ARRRAY<<28) | size;
-	v[1] = (VAL_ENUMER<<28) | 0x10000;
-	size = (size+3)/4;
+	long size = end - (Str1)(v+2);
+	v[0] = (VALUE_ARRRAY<<28) | size;
+	v[1] = (VALUE_ENUMER<<28) | 0x10000;
+	size = (size+1+3)/4; // +1 to include '\0'
 	return setOffset(v+2+size, 2+size);
 }
 
 value onSetStr2 (value v, const_Str2 end)
 {
 	assert(*end=='\0');
-	long size = end - (Str2)(v+2) + 1; // +1 to include '\0'
-	v[0] = (VAL_ARRRAY<<28) | size;
-	v[1] = (VAL_CHARAC<<28);
+	long size = end - (Str2)(v+2);
+	v[0] = (VALUE_ARRRAY<<28) | size;
+	v[1] = (VALUE_CHARAC<<28);
+	size += 1; // +1 to include '\0'
 	if(sizeof(wchar_t)==2) size = (size+1)/2;
 	return setOffset(v+2+size, 2+size);
 }
@@ -179,7 +194,7 @@ value value_alloc (value old, long size)
 
 value check_arguments (value v, uint32_t c, uint32_t count)
 {
-	c = ((c>>28)==VAL_VECTOR) ? (c & 0x0FFFFFFF) : 1;
+	c = VTYPE(c)==VALUE_VECTOR ? (c & 0x0FFFFFFF) : 1;
 	if(c!=count) // if error
 	{
 		const_Str2 argv[4];
@@ -210,7 +225,7 @@ value ToValue (value out, int rows, int cols, const void* in, bool setFloat)
 		if(rows!=1) v+=2;
 		for(i=0; i<rows; i++)
 		{
-			*v++ = (VAL_NUMBER<<28) | setFloat;
+			*v++ = (VALUE_NUMBER<<28) | setFloat;
 			if(b) memcpy(v, n, s);
 			else  memset(v, 0, s);
 			v += 2;
@@ -227,7 +242,7 @@ value ToValue (value out, int rows, int cols, const void* in, bool setFloat)
 			v+=2;
 			for(j=0; j<cols; j++)
 			{
-				*v++ = (VAL_NUMBER<<28) | setFloat;
+				*v++ = (VALUE_NUMBER<<28) | setFloat;
 				if(b) memcpy(v, n, s);
 				else  memset(v, 0, s);
 				v += 2;
@@ -257,10 +272,10 @@ static void onFail (value v, int rows, int cols, const char* name)
 	v = setStr21(v, name);
 	argv[1] = getStr2(vGetPrev(v));
 
-	argv[2] = (Str2)v; v+=64; intToStr((Str2)v, rows);
-	argv[3] = (Str2)v; v+=64; intToStr((Str2)v, cols);
+	argv[2] = (Str2)v; intToStr((Str2)v, rows); v+=64;
+	argv[3] = (Str2)v; intToStr((Str2)v, cols); v+=64;
 
-	vpcopy(stack, setMessage(v, 0, 4, argv));
+	vPrevCopy(stack, setMessage(v, 0, 4, argv));
 }
 
 static bool FromValue (value v, int rows, int cols,  void* out, bool getInt, const char* name)
@@ -268,6 +283,7 @@ static bool FromValue (value v, int rows, int cols,  void* out, bool getInt, con
 	value y = vPrev(v);
 	const_value n = vGet(y);
 	if(!value_type(n)) return v;
+
 	int i, j;
 	const_value t;
 	SmaFlt* outF = (SmaFlt*)out;

@@ -206,7 +206,9 @@ bool IS_TWSF_ID (int ID)
 	case Oper_dotproduct:
 	case Oper_transpose:
 
+	case Constant_PATH:
 	case Constant_this:
+	case Constant_catch:
 	case Constant_true:
 	case Constant_false:
 	case Constant_e_2_718_:
@@ -270,7 +272,20 @@ bool IS_TWSF_ID (int ID)
 	case Function_eval:
 	case Function_call:
 	case Function_print:
-	case Function_strlen: break;
+	case Function_strlen:
+
+	case Function_alert:
+	case Function_confirm:
+	case Function_prompt:
+	case Function_read:
+	case Function_write:
+
+	case Function_PcnToChr:
+	case Function_ChrToPcn:
+	case Function_ChrToFcn:
+	case Function_SetIsFcn:
+
+		break;
 
 	default: return false;
 	}
@@ -316,7 +331,9 @@ bool IS_TWST_ID (int ID)
 	case Division_By_Zero:
 	case Operand_Not_Supported:
 	case Only_On_Integer_Number:
-	case Argument_OutOf_Domain: break;
+	case Argument_OutOf_Domain:
+
+		break;
 
 	default: return false;
 	}
@@ -366,37 +383,37 @@ bool IS_TWST_ID (int ID)
 static const wchar default_twst_ENGLISH[] =
 	L"\r\n"
 	" 10  Cannot_Find_Component\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
 	"Cannot find component from %s.[[]]\r\n"
 	"\r\n"
 	" 11  Component_Already_Defined\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
 	"Component is already defined.[[]]\r\n"
 	"\r\n"
 	"\r\n"
 	" 21  IsNot_ValueStructure\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
 	"Must be a bracket, comma or name.[[]]\r\n"
 	"\r\n"
 	" 22  Invalid_Expression_End\r\n"
-	"Error at (%2,%3) in %4:\r\n"
+	"Error at (%|2s,%s) in %s:\r\n"
 	"Invalid end of expression.[[]]\r\n"
 	"\r\n"
 	" 23  Invalid_Expression_Syntax\r\n"
-	"Error at (%2,%3) in %4:\r\n"
-	"Invalid syntax due to '%1'.[[]]\r\n"
+	"Error at (%|2s,%s) in %s:\r\n"
+	"Invalid syntax due to '%|1s'.[[]]\r\n"
 	"\r\n"
 	"\r\n"
 	" 30  Bracket_Match_Invalid\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
-	"Expected '%5' instead.[[]]\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
+	"Expected '%s' instead.[[]]\r\n"
 	"\r\n"
 	" 31  Bracket_Match_None\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
-	"Does not have a matching '%5'.[[]]\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
+	"Does not have a matching '%s'.[[]]\r\n"
 	"\r\n"
 	" 32  Lacking_Bracket\r\n"
-	"Error at (%2,%3) in %4:\r\n"
+	"Error at (%|2s,%|3s) in %s:\r\n"
 	"Expect %s closed bracket%s at end of expression.[[]]\r\n"
 	"\r\n"
 	"\r\n"
@@ -416,7 +433,7 @@ static const wchar default_twst_ENGLISH[] =
 	"\r\n"
 	"\r\n"
 	" 55  Index_OutOf_Range\r\n"
-	"Indexing number = %s is not in range [0,%s].[[]]\r\n"
+	"Indexing number = %s is not in range [0,%s).[[]]\r\n"
 	"\r\n"
 	" 56  Vector_Middle_Value\r\n"
 	"The sum of the middle argument must be non-zero.[[]]\r\n"
@@ -447,11 +464,11 @@ static const wchar default_twst_ENGLISH[] =
 	"\r\n"
 	"\r\n"
 	" 80  Expect_Question_Before\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
 	"Expected '?' before it.[[]]\r\n"
 	"\r\n"
 	" 81  Expect_Choice_After\r\n"
-	"Error on '%1' at (%2,%3) in %4:\r\n"
+	"Error on '%s' at (%s,%s) in %s:\r\n"
 	"Expected ':' after it.[[]]\r\n"
 	"\r\n"
 	" 82 Condition_IsNot_Single\r\n"
@@ -557,7 +574,9 @@ static const wchar default_twsf_ENGLISH[] =
 	" 70 •       Oper_dotproduct \\u2022\r\n"
 	" 71 ^T      Oper_transpose\r\n"
 	"\r\n"
-	" 79 this        \r\n"
+	" 77 PATH        \r\n"
+	" 78 this        \r\n"
+	" 79 CATCH       \r\n"
 	" 80 true        \r\n"
 	" 81 false       \r\n"
 	" 82 e           \r\n"
@@ -567,8 +586,8 @@ static const wchar default_twsf_ENGLISH[] =
 	" 90 factorial   \r\n"
 	" 91 fullfloor   \r\n"
 	" 92 getprimes   \r\n"
-	" 93 srand       \r\n"
-	" 94 rand        \r\n"
+	" 93 seedrand    \r\n"
+	" 94 random      \r\n"
 	"\r\n"
 	" 95 gcd         \r\n"
 	" 96 ilog        \r\n"
@@ -608,8 +627,8 @@ static const wchar default_twsf_ENGLISH[] =
 	" 143 max        \r\n"
 	" 144 min        \r\n"
 	"\r\n"
-	" 150 vector     \r\n"
-	" 151 range      \r\n"
+	" 150 getvector  \r\n"
+	" 151 getrange   \r\n"
 	" 152 try        \r\n"
 	"\r\n"
 	" 160 tostr      \r\n"
@@ -622,6 +641,17 @@ static const wchar default_twsf_ENGLISH[] =
 	" 171 call       \r\n"
 	" 172 print      \r\n"
 	" 173 strlen     \r\n"
+	"\r\n"
+	" 174 alert      \r\n"
+	" 175 confirm    \r\n"
+	" 176 prompt     \r\n"
+	" 177 read       \r\n"
+	" 178 write      \r\n"
+	"\r\n"
+	" 190 PcnToChr   \r\n"
+	" 191 ChrToPcn   \r\n"
+	" 192 ChrToFcn   \r\n"
+	" 193 SetIsFcn   \r\n"
 	"\r\n";
 
 static const wchar default_twst_FRENCH[] = L"";

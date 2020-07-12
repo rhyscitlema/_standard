@@ -141,26 +141,62 @@ value vStrLen (value v);
 // <str> must be a literal: a number, a string, a character.
 value StrToVal (value out, const wchar* str);
 
-enum PUT_INFO {
-	PUT_NORMAL   = 0x000,   // print the values (number and string) normally.
-	PUT_CATEGORY = 0x100,   // print everything as 'v'
-	PUT_VAL_TYPE = 0x200,   // print strings as 'str' and numbers as int, rat, flt or com
-	PUT_ESCAPE   = 0x400,
-	PUT_NEWLINE  = 0x800    // put newline; used so to print matrix with each row on its own line
-};
+enum TOSTR_INFO
+{
+	TOSTR_CATEGORY = 0x01,  // for %Cate , convert every single-value type to 'v'.
+	TOSTR_VAL_TYPE = 0x02,  // for %Type , convert to: bool, enum, char, str, int, rat, flt, com, bigi, ptr, struct, data
+	TOSTR_ESCAPE   = 0x02,  // for %Esca , specify to escape special characters
+	TOSTR_NEWLINE  = 0x04,  // for %Line , specify to put a newline after each row
+	TOSTR_PAD_ZERO = 0x08,  // for %Zero , specify to pad with zero (with space is default)
 
-value VstToStr (
-	value v,            // input value to convert = vPrev(v)
-	int info_base,      // base: 2, 8, 10, 16, 0 for default
-	int t_places,       // number of total places, -1 for default
-	int d_places );     // number of decimal places, -1 for default
+	TOSTR_ALIGN_LEFT = 0x10,  // for %-... , specify to align to left (right is default)
+	TOSTR_ALIGN_CENT = 0x20,  // for %=... , specify to align to center (right is default)
+	TOSTR_CHARS_MAXI = 0x40,  // for %Maxi , specify that info[16:25] is maximum number of characters
+	TOSTR_EXACT_PREC = 0x80,  // for %.<n> , specify that info[26:31] is exact number of decimal places
+
+	TOSTR_s = 0x000, // for %s , use default conversion to string
+	TOSTR_d = 0x100, // for %d , use base 10
+	TOSTR_x = 0x200, // for %x , use base 16 lower case abcdef
+	TOSTR_X = 0x300, // for %X , use base 16 upper case ABCDEF
+	TOSTR_o = 0x400, // for %o , use base 8
+	TOSTR_b = 0x500, // for %b , use base 2
+	TOSTR_E = 0x600, // for %E , use scientific notation base 10
+	TOSTR_PP = 0x700, // for %% , only put the '%' character!
+};
+typedef struct { uint32_t info, length; } ToStrInfo;
+ToStrInfo getToStrInfo (const wchar* str);
+/*
+	%format of length ToStrInfo.length converts to ToStrInfo.info:
+	info[0 : 3] = 4-bit used as per 1st section of enum TOSTR_INFO
+	info[4 : 7] = 4-bit used as per 2nd section of enum TOSTR_INFO
+	info[8 :11] = 4-bit used as per 3rd section of enum TOSTR_INFO
+	info[12:15] = 4-bit index of the target value. 0 for default.
+	info[16:25] = 10-bit minimum number of characters. 0 for default.
+	info[26:31] = 6-bit maximum number of decimal places. 0 for default.
+*/
+#define TOSTR_GET_OPER(info)      (info &  0xF00)
+#define TOSTR_SET_OPER(info,n)  ( (info & ~0xF00) | (n & 0xF00) )
+
+#define TOSTR_GET_INDEX(info) ((info>>12) & 0xF  )
+#define TOSTR_GET_WIDTH(info) ((info>>16) & 0x3FF)
+#define TOSTR_GET_PREC(info)  ((info>>26) & 0x3F )
+
+#define TOSTR_SET_INDEX(info,n) ( (info & ~(0xF  <<12)) | ((n & 0xF  )<<12) )
+#define TOSTR_SET_WIDTH(info,n) ( (info & ~(0x3FF<<16)) | ((n & 0x3FF)<<16) )
+#define TOSTR_SET_PREC(info,n)  ( (info & ~(0x3F <<26)) | ((n & 0x3F )<<26) )
+
+#define TOSTR_MAX_INDEX 0xF
+#define TOSTR_MAX_WIDTH 0x3FF
+#define TOSTR_MAX_PREC  0x3F
+
+value VstToStr (value v, uint32_t info);
 
 
 #include "_strfun.h" // for strcpy22()
 static inline wchar* intToStr (wchar* out, SmaInt n)
 {
 	uint32_t v[100];
-	VstToStr(setSmaInt(v, n), 0,-1,-1);
+	VstToStr(setSmaInt(v, n), 0);
 	assert(v == vGet(v));
 	return strcpy22(out, getStr2(v));
 }

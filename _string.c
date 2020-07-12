@@ -8,18 +8,61 @@
 #include "_string.h"
 
 
+static value get_strings (value y, const_value n, const wchar* out[], int count)
+{
+	uint32_t a = *n;
+	if(VTYPE(a)==VALUE_VECTOR){
+		a = VECTOR_LEN(a);
+		n += 2; // skip vector header
+	} else a=1;
+
+	if(a == count){
+		for(a=0; a<count; a++) {
+			if(!isStr2(n)) break;
+			out[a] = getStr2(n);
+			n = vNext(n);
+		}
+	}
+	if(a != count){
+		const_Str2 argv[3] = {
+			L"Call argument%s must be %s string%|1s.",
+			(count==1 ? L"" : L"s"),
+			TIS2(0,count),
+		};
+		return setMessage(y, 0, 3, argv);
+	}
+	return NULL;
+}
+
+#define _init_n \
+	value y = vPrev(v); \
+	const_value n = vGet(y); \
+	uint32_t a = value_type(n); \
+	if(a==VALUE_MESSAGE) return v; \
+
+#define _init_s(count) \
+	_init_n \
+	const wchar* s[2] = {0}; \
+	value e = get_strings(y, n, s, count); \
+	if(e) return e; \
+
+#define _init_str \
+	_init_s(1) \
+	const_Str2 str = s[0]; \
+	const_Str2 end = str + strlen2(str); \
+
+
 /*********************************************/
 // chr => character
 // pcn => partly code number
-// pifcn => partly is fully code number
-// 6 = sizeof("\uXXXX")
+// is_fcn => is fully code number
 
-static bool pifcn[0x10000] = {false};
+static bool isfcn[0x10000] = {false};
 
-static void initial_set_pif_cn ()
+static void initial_SetIsFcn ()
 {
-	pifcn[0x0001] = true;
-	pifcn[0xFFFF] = true;
+	isfcn[0x0001] = true;
+	isfcn[0xFFFF] = true;
 }
 
 Str2 wchar_to_wstr (Str2 out, wchar c)
@@ -59,6 +102,7 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
 		if(c != '\\') break;
 		if(s==end) { end=0; break; } // if s = '\'
 		c = *s++;
+
 		     if(c=='t') c = '\t';
 		else if(c=='r') c = '\r';
 		else if(c=='n') c = '\n';
@@ -69,9 +113,9 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
 			while(true)
 			{
 				c = *s;
-				     if('0'<=c && c<='9') c=c-'0';
-				else if('A'<=c && c<='F') c=c-'A'+10;
-				else if('a'<=c && c<='f') c=c-'a'+10;
+				     if('0'<=c && c<='9') c-='0';
+				else if('A'<=c && c<='F') c-='A'-10;
+				else if('a'<=c && c<='f') c-='a'-10;
 				else break;
 				i = i*16 + c;
 				s++;
@@ -88,7 +132,7 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
 			while(true)
 			{
 				c = *s;
-				if('0'<=c && c<='9') c=c-'0';
+				if('0'<=c && c<='9') c-='0';
 				else break;
 				i = i*10 + c;
 				s++;
@@ -103,11 +147,10 @@ int wstr_to_wchar (wchar *out, const_Str2 str, const_Str2 end)
 	return end ? r : -r;
 }
 
-value pcn_to_chr (value v)
+
+value PcnToChr (value v)
 {
-	value y = vPrev(v);
-	const_Str2 str = getStr2(vGet(y));
-	const_Str2 end = str+strlen2(str);
+	_init_str
 	if(str==end) return v;
 
 	wchar* out = (wchar*)v;
@@ -129,56 +172,54 @@ value pcn_to_chr (value v)
 	return setStr22(y, (wchar*)v);
 }
 
-static value chr_to_ (value v, bool fcn)
+static value ChrToXcn (value v, bool fcn)
 {
-	value y = vPrev(v);
-	const_Str2 in = getStr2(vGet(y));
+	_init_str
 
-	long size = strlen2(in)*6;
+	// 6 = sizeof("\uXXXX") TODO: maybe use 10 for UTF32 instead?
+	long size = (end-str)*6;
 	if(size==0) return v;
 
-	initial_set_pif_cn();
+	initial_SetIsFcn();
 	wchar* out = (wchar*)v;
 
-	for( ; !strEnd2(in); in++)
+	for( ; str < end; str++)
 	{
-		if(fcn || pifcn[*in])
-			out = wchar_to_wstr (out, *in);
+		if(fcn || isfcn[*str])
+			out = wchar_to_wstr (out, *str);
 		else
-		switch(*in)
+		switch(*str)
 		{
 		case '\\': *out++ = '\\'; *out++ = '\\'; break;
 		case '\t': *out++ = '\\'; *out++ = 't'; break;
 		case '\r': *out++ = '\\'; *out++ = 'r'; break;
 		case '\n': *out++ = '\\'; *out++ = 'n'; break;
-		default: *out++ = *in; break;
+		default: *out++ = *str; break;
 		}
 	}
 	*out = 0;
 	return setStr22(y, (wchar*)v);
 }
 
-value chr_to_pcn (value v) { return chr_to_(v, 0); }
-value chr_to_fcn (value v) { return chr_to_(v, 1); }
-
-value set_pif_cn (value v)
+value ChrToPcn (value v) { return ChrToXcn(v, 0); }
+value ChrToFcn (value v) { return ChrToXcn(v, 1); }
+value SetIsFcn (value v)
 {
-	value y = vPrev(v);
-	const_Str2 in = getStr2(vGet(y));
-	const_Str2 end= in + strlen2(in);
+	_init_str
 	bool found=false;
 	wchar c;
-	for( ; in && *in; in++)
+	for( ; str < end; str++)
 	{
-		if(in[0]!='\\') continue;
-		c = in[1];
-		if(c!='u' && c!='U' && !isDigit(c)) continue;
-		int i = wstr_to_wchar(&c, in, end);
+		if(str[0]!='\\') continue;
+		c = str[1];
+		if(c!='u' && c!='U' && !isDigit(c))
+			continue;
+		int i = wstr_to_wchar(&c, str, end);
 		if(i>0)
 		{
-			pifcn[c] = true;
+			isfcn[c] = true;
 			found = true;
-			in += i-1; // -1 due to in++ in for loop
+			str += i-1; // -1 due to str++ of for loop
 		}
 	}
 	if(found) v = setBool(y, true);
@@ -186,10 +227,145 @@ value set_pif_cn (value v)
 	return v;
 }
 
+
+/******************************************************************************************/
+
+value oper_alert   (value v)
+{
+	const_value y = vPrev(v);
+	VstToStr(setRef(v, y), 0);
+	user_alert (L"Alert", getStr2(v));
+	return v;
+}
+
+value oper_confirm (value v)
+{
+	_init_s(1)
+	bool b = user_confirm (L"Confirm", s[0]);
+	return setBool(y, b);
+}
+
+value oper_prompt  (value v)
+{
+	_init_s(2)
+	const wchar* out = user_prompt (L"User Entry", s[0], s[1]);
+	return setStr22(y, out);
+}
+
+value oper_read    (value v)
+{
+	#ifdef LOCAL_USER
+	_init_s(1)
+	long len = strlen2(s[0]);
+	wchar name[len+1];     // +1 for '\0'
+	strcpy22 (name, s[0]); // first save the file name
+	return FileOpen2 (name, y);
+	#else
+	value y = vPrev(v);
+	return setError(y, L"Access denied.");
+	#endif
+}
+
+value oper_write   (value v)
+{
+	#ifdef LOCAL_USER
+	_init_s(2)
+	n = vNext(n+2); // +2 so to skip vector header
+	return vPrevCopy(y, FileSave2 (s[0], setRef(v,n)));
+	#else
+	value y = vPrev(v);
+	return setError(y, L"Access denied.");
+	#endif
+}
+
 /******************************************************************************************/
 
 
-Str2 sprintf2 (Str2 output, int argc, const_Str2* argv)
+typedef struct { uint16_t n, offset; } FromGetInt;
+
+static FromGetInt getInt (const wchar* str)
+{
+	int i=0, n=0;
+	wchar c = str[i];
+	while('0'<=c && c<='9')
+	{
+		n = n*10 + (c-'0');
+		c = str[++i];
+	}
+	FromGetInt r = {n, i};
+	return r;
+}
+
+ToStrInfo getToStrInfo (const wchar* str) // see documentation in _math.h
+{
+	const wchar* start = str;
+	ToStrInfo info = {0,0};
+	wchar c = *str++;
+	if(c == '%')
+	{
+		while(true)
+		{
+			c = *str++;
+			if(c=='_') continue;
+			if(c=='s') { info.info |= TOSTR_s; break; }
+			if(c=='d') { info.info |= TOSTR_d; break; }
+			if(c=='x') { info.info |= TOSTR_x; break; }
+			if(c=='X') { info.info |= TOSTR_X; break; }
+			if(c=='o') { info.info |= TOSTR_o; break; }
+			if(c=='b') { info.info |= TOSTR_b; break; }
+			if(c=='E') { info.info |= TOSTR_E; break; }
+			if(c=='%') { info.info |= TOSTR_PP; break; }
+
+			if('0'<=c && c<='9')
+			{
+				FromGetInt n = getInt(--str);
+				str += n.offset;
+				if(n.n > TOSTR_MAX_WIDTH) { c=0; break; } // if error
+				info.info = TOSTR_SET_WIDTH(info.info, n.n);
+			}
+			else if(c=='.')
+			{
+				c = *str;
+				if('0'<=c && c<='9')
+				{
+					FromGetInt n = getInt(str);
+					str += n.offset;
+					if(n.n > TOSTR_MAX_PREC) { c=0; break; } // if error
+					info.info = TOSTR_SET_PREC(info.info, n.n);
+					info.info |= TOSTR_EXACT_PREC;
+				}
+			}
+			else if(c=='|')
+			{
+				c = *str;
+				if('0'<=c && c<='9')
+				{
+					FromGetInt n = getInt(str);
+					str += n.offset;
+					if(n.n > TOSTR_MAX_INDEX) { c=0; break; } // if error
+					info.info = TOSTR_SET_INDEX(info.info, n.n);
+				}
+			}
+			else if(c=='-') info.info |= TOSTR_ALIGN_LEFT;
+			else if(c=='=') info.info |= TOSTR_ALIGN_CENT;
+
+			else if(0==memcmp(str-1, L"Cate", 8)) { str += 3; info.info |= TOSTR_CATEGORY; }
+			else if(0==memcmp(str-1, L"Type", 8)) { str += 3; info.info |= TOSTR_CATEGORY | TOSTR_VAL_TYPE; }
+			else if(0==memcmp(str-1, L"Esca", 8)) { str += 3; info.info |= TOSTR_ESCAPE; }
+			else if(0==memcmp(str-1, L"Line", 8)) { str += 3; info.info |= TOSTR_NEWLINE; }
+			else if(0==memcmp(str-1, L"Zero", 8)) { str += 3; info.info |= TOSTR_PAD_ZERO; }
+			else if(0==memcmp(str-1, L"Maxi", 8)) { str += 3; info.info |= TOSTR_CHARS_MAXI; }
+
+			else { c=0; break; } // if error
+		}
+	}
+	if(!c) info.info = ~0;
+	info.length = str - start;
+	return info;
+}
+
+
+static Str2 do_set_message (Str2 output, int argc, const_Str2* argv, const_Str3 str)
 {
 	long len = 0;
 	bool getlen = output==NULL;
@@ -197,7 +373,8 @@ Str2 sprintf2 (Str2 output, int argc, const_Str2* argv)
 	if(argc<1 || argv==NULL) return output;
 
 	const_Str2 format = argv[0];
-	wchar s[3];
+	if(!format) return output;
+
 	int i=0;
 	while(true)
 	{
@@ -206,117 +383,68 @@ Str2 sprintf2 (Str2 output, int argc, const_Str2* argv)
 			len += output - (Str2)0;
 			output = NULL;
 		}
-		if(strEnd2(format)) break;
-		wchar c = *format++;
-		if(c != '%')
+		if(!*format) break;
+
+		ToStrInfo info = getToStrInfo(format);
+		int oper = TOSTR_GET_OPER(info.info);
+		bool skip = false;
+
+		if((info.info==~0 || info.length<=1)
+		|| (oper!=TOSTR_s && oper!=TOSTR_PP))
+			skip = true;
+
+		else if(oper == TOSTR_PP) // if a "%%"
 		{
-			s[0]=*(format-1); s[1]=0;
-			output = strcpy22(output, s);
-			continue;
+			if(output){
+				output[0] = '%';
+				output[1] = '\0';
+			} output++;
 		}
-		if(!strEnd2(format))
-			c = *format++;
-		if(c == '%')
-		{
-			s[0]=*(format-1); s[1]=0;
-			output = strcpy22(output, s);
-			continue;
+		else{
+			int j = TOSTR_GET_INDEX(info.info); // get the target index
+			i = j ? j : i+1; // use i+1 if target is the default j==0
+
+			if(str.ptr==NULL){
+				if(i >= argc) skip = true; // if error
+				else output = strcpy22(output, argv[i]);
+			}
+			else if(i==1) output = strcpy23(output, str);
+			else if(i==2) output = intToStr(output, sLine(str));
+			else if(i==3) output = intToStr(output, sColn(str));
+			else if(i==4) output = strcpy22(output, lchar_get_source(str));
+			else if(i-4 >= argc) skip = true;
+			else output = strcpy22(output, argv[i-4]);
 		}
-		if(c == '0') { i++; continue; }
-		else if(c == 's') i++;
-		else if('1'<=c && c<='9') i = c-'0';
-		else if('A'<=c && c<='Z') i = c-'A'+10;
-		else
-		{
-			s[0]=*(format-2); s[1]=*(format-1); s[2]=0;
-			output = strcpy22(output, s);
-			continue;
-		}
-		if(i < argc) output = strcpy22(output, argv[i]);
+		if(skip) output = strcpy22S(output, format, info.length);
+		format += info.length;
 	}
 	if(getlen) output += len;
 	return output;
 }
 
-
+Str2 sprintf2 (Str2 output, int argc, const_Str2* argv)
+{ return do_set_message (output, argc, argv, C37(NULL)); }
 
 Str2 set_message (Str2 output, int argc, const_Str2* argv, const_Str3 str)
 {
-	long len = 0;
-	bool getlen = output==NULL;
-	if(!getlen) *output=0;
-	if(argc<=0 || argv==NULL) return output;
 	assert(str.ptr); if(!str.ptr) return output;
-
-	const_Str2 format = argv[0];
-	wchar s[3];
-	int i=0;
-	while(true)
-	{
-		if(getlen && output)
-		{
-			len += output - (Str2)0;
-			output = NULL;
-		}
-		if(strEnd2(format)) break;
-		wchar c = *format++;
-		if(c != '%')
-		{
-			s[0]=*(format-1); s[1]=0;
-			output = strcpy22(output, s);
-			continue;
-		}
-		if(!strEnd2(format))
-			c = *format++;
-		if(c == '%')
-		{
-			s[0]=*(format-1); s[1]=0;
-			output = strcpy22(output, s);
-			continue;
-		}
-		     if(c == '0') { i++; continue; }
-		else if(c == 's') i++;
-		else if('1'<=c && c<='9') i = c-'0';
-		else if('A'<=c && c<='Z') i = c-'A'+10;
-		else
-		{
-			s[0]=*(format-2); s[1]=*(format-1); s[2]=0;
-			output = strcpy22(output, s);
-			continue;
-		}
-		     if(i==1) output = strcpy23(output, str);
-		else if(i==2) output = intToStr(output, sLine(str));
-		else if(i==3) output = intToStr(output, sColn(str));
-		else if(i==4) output = strcpy22(output, lchar_get_source(str));
-		else if(i-4 < argc) output = strcpy22(output, argv[i-4]);
-	}
-	if(getlen) output += len;
-	return output;
+	return do_set_message (output, argc, argv, str);
 }
 
 
-
-const_Str2 strNext2 (const_Str2 str)
+const_Str2 skipComment2 (const_Str2 str)
 {
-	do{
-		if(strEnd2(str)) break;
-		if(*str != '#')
-		{
-			str++;
-			if(strEnd2(str)) break;
-			if(*str != '#') break;
-		}
+	while(true)
+	{
+		if(!str || *str != '#') break;
 		str++;
-		if(strEnd2(str)) break;
-		if(*str != '{')
+		if(*str != '{') // if a single line comment
 		{
 			// skip till '\n' is found, excluding it
-			while(!strEnd2(str)
-			   && *str != '\n' )
-				str++;
+			while(*str && *str != '\n') str++;
 			break;
 		}
-		// else: skip till "}#" is found, including it
+		// else skip till "}#" is found, including it
 		wchar a, b;
 		int level=1;
 		str++;
@@ -324,7 +452,7 @@ const_Str2 strNext2 (const_Str2 str)
 		while(true)
 		{
 			str++;
-			if(strEnd2(str)) break;
+			if(!*str) break;
 			a = b;
 			b = *str;
 			if(a=='#' && b=='{') level++;
@@ -334,20 +462,17 @@ const_Str2 strNext2 (const_Str2 str)
 				{ str++; break; }
 			}
 		}
-	}while(0);
+	}
 	return str;
 }
 
-const_Str3 strNext3 (const_Str3 str)
+
+const_Str3 skipComment3 (const_Str3 str)
 {
-	do{
+	while(true)
+	{
 		if(strEnd3(str)) break;
-		if(sChar(str) != '#')
-		{
-			str = sNext(str);
-			if(strEnd3(str)) break;
-			if(sChar(str) != '#') break;
-		}
+		if(sChar(str) != '#') break;
 		str = sNext(str);
 		if(strEnd3(str)) break;
 		if(sChar(str) != '{')
@@ -376,10 +501,9 @@ const_Str3 strNext3 (const_Str3 str)
 				{ str = sNext(str); break; }
 			}
 		}
-	}while(0);
+	}
 	return str;
 }
-
 
 
 /*const_String lchar_goto (const_String str, int offset)

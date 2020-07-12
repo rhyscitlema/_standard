@@ -67,26 +67,27 @@ Str3 astrcpy32 (Str3 out, const_Str2 in, const_Str2 source)
 {
 	out = str3_alloc(out, strlen2(in));
 	strcpy32(out, in); // must come before
-	if(source) set_line_coln_source(out, 1, 1, source);
+	set_line_coln_source(out, 1, 1, source);
 	return out;
 }
 
 
-Str3 set_lchar_array (lchar* str, long n, const_Str2 in, const_Str2 source)
+Str3 set_lchar_array (lchar* array, long n, const_Str2 in, const_Str2 source)
 {
-	assert(str && !strEnd2(source));
+	assert(array);
 	assert(n >= strlen2(in)+1);
+	const mchar empty = {0};
 	long i;
 	for(i=0; i<n; i++)
 	{
-		str[i].next = (i+1< n) ? &str[i+1] : NULL;
-		str[i].prev = (i-1>=0) ? &str[i-1] : NULL;
-		str[i].chr.c = 0;
+		array[i].next = (i+1< n) ? &array[i+1] : NULL;
+		array[i].prev = (i-1>=0) ? &array[i-1] : NULL;
+		array[i].chr = empty;
 	}
-	Str3 out = {str, NULL};
+	Str3 out = {array, NULL};
 	strcpy32(out, in); // must come before
 	set_line_coln_source(out, 1, 1, source);
-	out.end = str+n-1;
+	out.end = &array[n-1];
 	return out;
 }
 
@@ -190,7 +191,7 @@ Str3 strcpy33 (Str3 out, const_Str3 in)
 
 Str2 strcpy22S(Str2 out, const_Str2 in, long n)
 {
-	assert(out!=NULL);
+	assert(out!=NULL); // maybe remove this assertion
 	memcpy(out, in, n*sizeof(*in));
 	if(out) out[n] ='\0';
 	return out+n;

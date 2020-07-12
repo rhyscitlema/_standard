@@ -73,7 +73,9 @@ enum ID_TWSF
 	Oper_transpose      = 71,
 	Oper_indexing       = 72,
 
-	Constant_this       = 79,
+	Constant_PATH       = 77,
+	Constant_this       = 78,
+	Constant_catch      = 79,
 	Constant_true       = 80,
 	Constant_false      = 81,
 	Constant_e_2_718_   = 82,
@@ -141,16 +143,27 @@ enum ID_TWSF
 	Function_print      = 172,
 	Function_strlen     = 173,
 
-	ID_TWSF_STOP        = 179,
+	Function_alert      = 174,
+	Function_confirm    = 175,
+	Function_prompt     = 176,
+	Function_read       = 177,
+	Function_write      = 178,
 
-	SET_CONSTANT        = 180,
-	SET_COMPNAME        = 181,
-	SET_OUTSIDER        = 182,
-	SET_REPL_LHS        = 183,
-	SET_PARAMTER        = 184,
-	SET_VAR_FUNC        = 185,
-	SET_DOT_CALL        = 186,
-	SET_DOT_FUNC        = 187
+	Function_PcnToChr   = 190,
+	Function_ChrToPcn   = 191,
+	Function_ChrToFcn   = 192,
+	Function_SetIsFcn   = 193,
+
+	ID_TWSF_STOP        = 199,
+
+	SET_CONSTANT        = 200,
+	SET_COMPNAME        = 201,
+	SET_OUTSIDER        = 202,
+	SET_REPL_LHS        = 203,
+	SET_PARAMTER        = 204,
+	SET_VAR_FUNC        = 205,
+	SET_DOT_CALL        = 206,
+	SET_DOT_FUNC        = 207,
 };
 
 
