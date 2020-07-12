@@ -1,7 +1,7 @@
 #ifndef _VALUE_H
 #define _VALUE_H
 /*
-    value.h
+	value.h
 */
 
 #include "_stddef.h"
@@ -23,57 +23,57 @@ value vpcopy (value out, value v);
 
 static inline enum ValueType value_type (register const_value n)
 {
-    assert(n!=NULL); // keep this
-    if(!n) return 0;
-    uint32_t a = *n;
-    enum ValueType type = a >> 28;
-    switch(type)
-    {
-        case VAL_CHARAC:
-        case VAL_ENUMER: type = aSmaInt; break;
+	assert(n!=NULL); // keep this
+	if(!n) return 0;
+	uint32_t a = *n;
+	enum ValueType type = a >> 28;
+	switch(type)
+	{
+		case VAL_CHARAC:
+		case VAL_ENUMER: type = aSmaInt; break;
 
-        case VAL_NUMBER:
-            a &= 0x0FFFFFFF;
-            switch(a){
-            case 0: type = aSmaInt; break;
-            case 1: type = aSmaFlt; break;
-            case 2: type = aSmaRat; break;
-            case 3: type = aSmaCom; break;
-            } break;
+		case VAL_NUMBER:
+			a &= 0x0FFFFFFF;
+			switch(a){
+			case 0: type = aSmaInt; break;
+			case 1: type = aSmaFlt; break;
+			case 2: type = aSmaRat; break;
+			case 3: type = aSmaCom; break;
+			} break;
 
-        case VAL_ARRRAY:
-            if((n[1]>>28)==VAL_CHARAC)
-                type = aString;
-            break;
+		case VAL_ARRRAY:
+			if((n[1]>>28)==VAL_CHARAC)
+				type = aString;
+			break;
 
-        default: break;
-    }
-    return type;
+		default: break;
+	}
+	return type;
 }
 
 
 static inline SmaInt getSmaInt (register const_value v)
 {
-    uint32_t a = v[0];
-    if((a>>28)==VAL_CHARAC) return (a & 0x0FFFFFFF);
-    if((a>>28)==VAL_ENUMER) return (a & 0x0000FFFF);
-    return *(SmaInt*)(v+1);
+	uint32_t a = v[0];
+	if((a>>28)==VAL_CHARAC) return (a & 0x0FFFFFFF);
+	if((a>>28)==VAL_ENUMER) return (a & 0x0000FFFF);
+	return *(SmaInt*)(v+1);
 }
 static inline value setSmaInt (register value v, register SmaInt si)
 {
-    assert(v!=NULL);
-    v[0] = (VAL_NUMBER<<28) | 0;
-    *(SmaInt*)(v+1) = si;
-    v[3] = (VAL_OFFSET<<28) | 3;
-    return v+4;
+	assert(v!=NULL);
+	v[0] = (VAL_NUMBER<<28) | 0;
+	*(SmaInt*)(v+1) = si;
+	v[3] = (VAL_OFFSET<<28) | 3;
+	return v+4;
 }
 static inline value setSmaFlt (register value v, register SmaFlt si)
 {
-    assert(v!=NULL);
-    v[0] = (VAL_NUMBER<<28) | 1;
-    *(SmaFlt*)(v+1) = si;
-    v[3] = (VAL_OFFSET<<28) | 3;
-    return v+4;
+	assert(v!=NULL);
+	v[0] = (VAL_NUMBER<<28) | 1;
+	*(SmaFlt*)(v+1) = si;
+	v[3] = (VAL_OFFSET<<28) | 3;
+	return v+4;
 }
 static inline SmaFlt getSmaFlt (register const_value v) { return *(SmaFlt*)(v+1); }
 
@@ -93,98 +93,102 @@ static inline value setEmptyVector(value y) { setVector(y, 0, 0); return setOffs
 
 static inline value vPrev (register value v)
 {
-    assert(v!=NULL);
-    uint32_t a = *--v; // note the --v
-    if((a>>28)==VAL_OFFSET)
-    {   v -= (a & 0x0FFFFFFF);
-        assert(a & 0x0FFFFFFF);
-        assert((*v>>28)!=VAL_OFFSET); // TODO: on vPrev(): remove this line
-    }
-    else assert((a>>28)==VAL_POINTER && (a&0x08000000)); // assert is a small setRef()
-    return v;
+	assert(v!=NULL);
+	uint32_t a = *--v; // note the --v
+	if((a>>28)==VAL_OFFSET)
+	{
+		v -= (a & 0x0FFFFFFF);
+		assert(a & 0x0FFFFFFF);
+		assert((*v>>28)!=VAL_OFFSET); // TODO: on vPrev(): remove this line
+	}
+	else assert((a>>28)==VAL_POINTER && (a&0x08000000)); // assert is a small setRef()
+	return v;
 }
 
 static inline const_value vNext (register const_value v)
 {
-    assert(v!=NULL);
-    uint32_t a = *v;
-    if((a>>28)==VAL_OFFSET)
-    {   v += (a & 0x0FFFFFFF);
-        assert(a & 0x0FFFFFFF);
-    }
-    v += vSize(v);
-    return v;
+	assert(v!=NULL);
+	uint32_t a = *v;
+	if((a>>28)==VAL_OFFSET)
+	{
+		v += (a & 0x0FFFFFFF);
+		assert(a & 0x0FFFFFFF);
+	}
+	v += vSize(v);
+	return v;
 }
 #define vNEXT(v) ((value)(uintptr_t)vNext(v))
 
 static inline value vnext (register value v)
 {
-    assert(v!=NULL);
-    v = vNEXT(v);
-    assert((*v>>28)==VAL_OFFSET);
-    v++; // skip the VAL_OFFSET
-    return v;
+	assert(v!=NULL);
+	v = vNEXT(v);
+	assert((*v>>28)==VAL_OFFSET);
+	v++; // skip the VAL_OFFSET
+	return v;
 }
 #define unOffset(v) (v-1) // skip the VAL_OFFSET
 
 
 static inline const_value vGet (register const_value v)
 {
-    assert(v!=NULL);
-    while(true)
-    {
-        uint32_t a = *v;
-        if((a>>28)==VAL_OFFSET)
-        {   v += (a & 0x0FFFFFFF);
-            assert(a & 0x0FFFFFFF);
-        }
-        else if((a>>28)==VAL_POINTER)
-        {
-            if(a & 0x08000000)
-            {   v -= (a & 0x07FFFFFF);
-                assert(a & 0x07FFFFFF);
-            }
-            else
-            {
-                int64_t n = *(int64_t*)(v+1);
-                assert(n!=0);
-                if(a & 0x04000000)
-                    v -= n;
-                else if(a & 0x02000000)
-                {
-                    v = (const_value)(intptr_t)n;
-                    if(v==NULL) break;
-                }
-            }
-        }
-        else break;
-    }
-    return v;
+	assert(v!=NULL);
+	while(true)
+	{
+		uint32_t a = *v;
+		if((a>>28)==VAL_OFFSET)
+		{
+			v += (a & 0x0FFFFFFF);
+			assert(a & 0x0FFFFFFF);
+		}
+		else if((a>>28)==VAL_POINTER)
+		{
+			if(a & 0x08000000)
+			{
+				v -= (a & 0x07FFFFFF);
+				assert(a & 0x07FFFFFF);
+			}
+			else
+			{
+				int64_t n = *(int64_t*)(v+1);
+				assert(n!=0);
+				if(a & 0x04000000)
+					v -= n;
+				else if(a & 0x02000000)
+				{
+					v = (const_value)(intptr_t)n;
+					if(v==NULL) break;
+				}
+			}
+		}
+		else break;
+	}
+	return v;
 }
 
 static inline value setRef (value v, const_value n) // set Reference pointer
 {
-    assert(v!=NULL);
-    register uint64_t b = v>n ? (v-n) : -(uint64_t)(n-v);
-    if(b < 0x08000000)
-        *v++ = (VAL_POINTER<<28) | 0x08000000 | (uint32_t)b;
-    else
-    {   v[0] = (VAL_POINTER<<28) | 0x04000000;
-        *(int64_t*)(v+1) = b;
-        v[3] = (VAL_OFFSET<<28) | 3;
-        v += 4;
-    }
-    return v;
+	assert(v!=NULL);
+	register uint64_t b = v>n ? (v-n) : -(uint64_t)(n-v);
+	if(b < 0x08000000)
+		*v++ = (VAL_POINTER<<28) | 0x08000000 | (uint32_t)b;
+	else{
+		v[0] = (VAL_POINTER<<28) | 0x04000000;
+		*(int64_t*)(v+1) = b;
+		v[3] = (VAL_OFFSET<<28) | 3;
+		v += 4;
+	}
+	return v;
 }
 
 static inline value setAbsRef (value v, const_value n)
 {
-    assert(v!=NULL);
-    register int64_t b = (intptr_t)n;
-    v[0] = (VAL_POINTER<<28) | 0x02000000;
-    *(int64_t*)(v+1) = b;
-    v[3] = (VAL_OFFSET<<28) | 3;
-    return v+4;
+	assert(v!=NULL);
+	register int64_t b = (intptr_t)n;
+	v[0] = (VAL_POINTER<<28) | 0x02000000;
+	*(int64_t*)(v+1) = b;
+	v[3] = (VAL_OFFSET<<28) | 3;
+	return v+4;
 }
 
 
@@ -210,17 +214,17 @@ static inline bool isStr2 (const_value v)
 
 static inline const_Str1 getStr1 (const_value n)
 {
-    assert(isStr1(n));
-    Str1 s = (char*)(n+2);
-    assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
-    return s;
+	assert(isStr1(n));
+	Str1 s = (char*)(n+2);
+	assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
+	return s;
 }
 static inline const_Str2 getStr2 (const_value n)
 {
-    assert(isStr2(n));
-    Str2 s = (wchar*)(n+2);
-    assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
-    return s;
+	assert(isStr2(n));
+	Str2 s = (wchar*)(n+2);
+	assert(!s[(*n & 0x0FFFFFFF)-1]); // assert '\0' termination
+	return s;
 }
 value onSetStr1(value v, const_Str1 end);
 value onSetStr2(value v, const_Str2 end);

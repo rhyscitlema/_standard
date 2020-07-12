@@ -1,7 +1,7 @@
 #ifndef __STRFUN_H
 #define __STRFUN_H
 /*
-    strfun.h
+	strfun.h
 */
 
 #include "_stddef.h"
@@ -31,7 +31,8 @@ Str3 str3_alloc (Str3 s, long n);
 
 
 /* Convert string between different string types.
-   Auto-conversion would have been quite helpful! */
+*  Auto-conversion would have been quite helpful!
+*/
 const_Str1 C12 (const_Str2 in);
 const_Str1 C13 (const_Str3 in); // for ASCII char only
 const_Str2 C21 (const_Str1 in);
@@ -46,7 +47,8 @@ const_Str2 TIS2 (int count, long n);
 
 
 /* return output pointing at end of string.
-   if out==NULL return out + length of input */
+*  if out==NULL return out + length of input
+*/
 Str1 strcpy11 (Str1 out, const_Str1 in);
 Str1 strcpy12 (Str1 out, const_Str2 in);
 Str2 strcpy21 (Str2 out, const_Str1 in);

@@ -1,7 +1,7 @@
 #ifndef __MATH_H
 #define __MATH_H
 /*
-    _math.h
+	_math.h
 */
 
 #include "_value.h"
@@ -142,35 +142,36 @@ value vStrLen (value v);
 value StrToVal (value out, const wchar* str);
 
 enum PUT_INFO {
-    PUT_NORMAL   = 0x000,   // print the values (number and string) normally.
-    PUT_CATEGORY = 0x100,   // print everything as 'v'
-    PUT_VAL_TYPE = 0x200,   // print strings as 'str' and numbers as int, rat, flt or com
-    PUT_ESCAPE   = 0x400,
-    PUT_NEWLINE  = 0x800    // put newline; used so to print matrix with each row on its own line
+	PUT_NORMAL   = 0x000,   // print the values (number and string) normally.
+	PUT_CATEGORY = 0x100,   // print everything as 'v'
+	PUT_VAL_TYPE = 0x200,   // print strings as 'str' and numbers as int, rat, flt or com
+	PUT_ESCAPE   = 0x400,
+	PUT_NEWLINE  = 0x800    // put newline; used so to print matrix with each row on its own line
 };
 
-value VstToStr (value v,            // input value to convert = vPrev(v)
-                int info_base,      // base: 2, 8, 10, 16, 0 for default
-                int t_places,       // number of total places, -1 for default
-                int d_places);      // number of decimal places, -1 for default
+value VstToStr (
+	value v,            // input value to convert = vPrev(v)
+	int info_base,      // base: 2, 8, 10, 16, 0 for default
+	int t_places,       // number of total places, -1 for default
+	int d_places );     // number of decimal places, -1 for default
 
 
 #include "_strfun.h" // for strcpy22()
 static inline wchar* intToStr (wchar* out, SmaInt n)
 {
-    uint32_t v[100];
-    VstToStr(setSmaInt(v, n), 0,-1,-1);
-    assert(v == vGet(v));
-    return strcpy22(out, getStr2(v));
+	uint32_t v[100];
+	VstToStr(setSmaInt(v, n), 0,-1,-1);
+	assert(v == vGet(v));
+	return strcpy22(out, getStr2(v));
 }
 
 static inline SmaInt strToInt (const wchar* str, value stack)
 {
-    assert(stack!=NULL);
-    toInt(StrToVal(stack, str));
-    if(value_type(stack)==aSmaInt)
-        return getSmaInt(stack);
-    else return 0;
+	assert(stack!=NULL);
+	toInt(StrToVal(stack, str));
+	if(value_type(stack)==aSmaInt)
+		return getSmaInt(stack);
+	else return 0;
 }
 
 

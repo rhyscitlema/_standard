@@ -1,7 +1,7 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 /*
-    _stdio.h
+	_stdio.h
 */
 
 #include "_stddef.h"
@@ -36,15 +36,15 @@ extern Str2 default_file_path();
 
 
 /* On success, return file content as VT_ARRRAY
-   On failure, return error message as VT_MESSAGE
+*  On failure, return error message as VT_MESSAGE
 */
 value FileOpen1 (const_Str1 filename, value stack);
 value FileOpen2 (const_Str2 filename, value stack);
 
 
 /* File content to save = y = vPrev(stack)
-   On success, return setBool(y, true)
-   On failure, return setError(y, message)
+*  On success, return setBool(y, true)
+*  On failure, return setError(y, message)
 */
 value FileSave1 (const_Str1 filename, value stack);
 value FileSave2 (const_Str2 filename, value stack);

@@ -1,7 +1,7 @@
 #ifndef __STRING_H
 #define __STRING_H
 /*
-    _string.h
+	_string.h
 */
 
 #include <string.h>
@@ -47,18 +47,18 @@ Str2 sprintf2 (Str2 output, int argc, const_Str2* argv);
 Str2 set_message (Str2 output, int argc, const_Str2* argv, const_Str3 str);
 
 /*
-    The below is defined only in librfet.
-    It is a once-off evaluation.
-    Typical usage is:
+	The below is defined only in librfet.
+	It is a once-off evaluation.
+	Typical usage is:
 
-    stack = rfet_parse_and_evaluate (stack, rfet_string, NULL, NULL);
-    stack = VstToStr(stack, PUT_NEWLINE|0, -1, -1); // see _math.h
-    puts2(getStr2(vGetPrev(stack))); // print output string to stdout
+	stack = rfet_parse_and_evaluate (stack, rfet_string, NULL, NULL);
+	stack = VstToStr(stack, PUT_NEWLINE|0, -1, -1); // see _math.h
+	puts2(getStr2(vGetPrev(stack))); // print output string to stdout
 */
-value rfet_parse_and_evaluate(
-    value stack,
-    const_Str2 rfet_string,     /* string to be parsed and evaluated */
-    const_Str2 source_name,     /* source of rfet_string, if NULL then "input" is used */
-    const_value argument);
+value rfet_parse_and_evaluate (
+	value stack,
+	const_Str2 rfet_string,     /* string to be parsed and evaluated */
+	const_Str2 source_name,     /* source of rfet_string, if NULL then "input" is used */
+	const_value argument );
 
 #endif
