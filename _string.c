@@ -583,39 +583,3 @@ void string_clean()
 	CXX_clean();
 }
 
-
-/*
-#include <avl.h>
-AVLT soureNames={0};
-
-static int avl_compare_name (const void* key1, const void* key2, const void* arg)
-{ return 0==strcmp22( 1+(const wchar*)key1 , 1+(const wchar*)key2 ); }
-
-static uint16_t submitSourceName (const wchar* name)
-{
-	void* node = avl_do(AVL_FIND, &sourceNames, name-1, 0, 0, avl_compare_name);
-	if(node) return *(uint16_t*)node;
-
-	node = avl_new(NULL, (1+strlen2(name)+1)*sizeof(wchar));
-
-	uint16_t sourceID = sourceNames.size + 1;
-	*(uint16_t*)node = sourceID;
-	strcpy22( 1+(wchar*)node, name);
-
-	avl_do(AVL_PUT, &sourceNames, node, 0, 0, avl_compare_name);
-	return sourceID;
-}
-
-const wchar* lchar_get_source (const_String str)
-{
-	uint16_t sourceID = mChar(str).source;
-	void* node = avl_min(&sourceNames);
-	for( ; node; node = avl_next(node))
-	{
-		if(*(uint16_t*)node == sourceID)
-			return 1+(const wchar*)node;
-	}
-	assert(node!=NULL);
-	return NULL;
-}
-*/

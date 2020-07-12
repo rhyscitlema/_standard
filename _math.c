@@ -1945,7 +1945,9 @@ static wchar* FltToStrGet (wchar* out, SmaFlt n, int base, uint32_t info)
 		n = n-w;                          // get decimal part of n
 		d = (SmaInt)((1.0+n)*scaler);     // scale and get it into integer
 
-		if(w==0 && n!=0 && d==scaler      // if number is close to 0
+		if(w==0
+		&& (d/base == scaler/base)        // if number is close to 0
+		&& !(info & TOSTR_EXACT_PREC)
 		&& ((SmaInt)(n*1000000000000L)))
 			e = true;                     // then use scientific notation
 	}
