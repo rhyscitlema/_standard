@@ -16,9 +16,9 @@ typedef wchar_t wchar;
 
 typedef struct _mchar {
 	wchar c;
+	uint16_t source;
 	uint32_t line;
 	uint32_t coln;
-	uint16_t source;
 } mchar;
 
 typedef struct _lchar {

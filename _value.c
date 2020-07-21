@@ -46,9 +46,9 @@ long vSize (const_value v)
 			if(VTYPE(b)==VALUE_ENUMER)
 			{
 				b = ((b>>16)&0x0FFF); // get 12-bit type
-			     if(b==0) a = (a+31)/32; // if array of 1-bit boolean
-			else if(b==1) a = (a+1+3)/4; // if array of 8-bit UTF8 char, +1 to include '\0'
-			else a = (a+1)/2; // else if any other enumeration value = 16-bit
+				if(b==0) a = (a+31)/32; // if array of 1-bit boolean
+				else if(b==1) a = (a+1+3)/4; // if array of 8-bit UTF8 char, +1 to include '\0'
+				else a = (a+1)/2; // else if any other enumeration value = 16-bit
 			}
 			else if(VTYPE(b)==VALUE_CHARAC)  // if array of 28-bit UTF32 char
 			{

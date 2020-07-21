@@ -10,12 +10,12 @@
 #define MAX_PATH_LEN 4095 /* = maximum size of file path */
 
 
-void wait(); /* wait for user to press Enter on Command Line Interface */
+extern void wait(); /* wait for user to press Enter on Command Line Interface */
 
 /* the below are explicitly provided by the platform-dependent code */
-void         user_alert   (const_Str2 title, const_Str2 message);
-bool         user_confirm (const_Str2 title, const_Str2 message);
-const wchar* user_prompt  (const_Str2 title, const_Str2 message, const wchar* entry);
+extern void         user_alert   (const_Str2 title, const_Str2 message);
+extern bool         user_confirm (const_Str2 title, const_Str2 message);
+extern const wchar* user_prompt  (const_Str2 title, const_Str2 message, const wchar* entry);
 
 
 /* print character to default standard output */

@@ -179,8 +179,8 @@ static inline const_value vGet (register const_value v)
 static inline value setRef (value v, const_value n) // set Reference pointer
 {
 	assert(v!=NULL);
-	register uint64_t b = v>n ? (v-n) : -(uint64_t)(n-v);
-	if(b < 0x08000000)
+	register int64_t b = v>n ? (v-n) : -(int64_t)(n-v);
+	if(0 <= b && b < 0x08000000)
 		*v++ = (VALUE_POINTER<<28) | 0x08000000 | (uint32_t)b;
 	else{
 		v[0] = (VALUE_POINTER<<28) | 0x04000000;

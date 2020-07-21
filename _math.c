@@ -4,7 +4,6 @@
 */
 
 #include <math.h>
-#include <complex.h>
 #include "_string.h"
 #include "_stdio.h"
 #include "_texts.h"
@@ -12,8 +11,17 @@
 #include <stdio.h> // for sprintf() only
 
 
-
+#ifdef _MSC_VER
+typedef double SmaCom;
+#define I 0
+#define carg(x) 0
+#define creal(x) x
+#define cimag(x) 0
+#define conj(x) 0
+#else
+#include <complex.h>
 typedef double complex SmaCom;
+#endif
 
 #ifndef COMPLEX
 #define COMPLEX 0
@@ -80,7 +88,7 @@ static value setSmaCom (value v, SmaCom x)
 {
 	const int l = 1+sizeof(SmaCom)/sizeof(*v); // get length
 	assert(v!=NULL);
-	v[0] = (VALUE_NUMBER<<28) | 3; // 3 for Small Complex
+	v[0] = (VALUE_NUMBER<<28) | 3u; // 3 for Small Complex
 	*(SmaCom*)(v+1) = x;
 	v[l] = (VALUE_OFFSET<<28) | l;
 	return v+l+1;
@@ -918,18 +926,18 @@ value __mul (value v)
 	else if(rowN==3 && colN==1 && rowM==3 && colM==1)
 	{
 		// do vector multiplication
-		const_value _n[3], _m[3];
-		n+=2; _n[0]=n; for(i=1; i<3; i++) { n = vNext(n); _n[i]=n; }
-		m+=2; _m[0]=m; for(j=1; j<3; j++) { m = vNext(m); _m[j]=m; }
+		const_value p[3], q[3];
+		n+=2; p[0]=n; for(i=1; i<3; i++) { n = vNext(n); p[i]=n; }
+		m+=2; q[0]=m; for(j=1; j<3; j++) { m = vNext(m); q[j]=m; }
 
-		v = _mul(setRef(setRef(v, _n[1]), _m[2]));
-		v = _mul(setRef(setRef(v, _n[2]), _m[1]));
+		v = _mul(setRef(setRef(v, p[1]), q[2]));
+		v = _mul(setRef(setRef(v, p[2]), q[1]));
 		v = _sub(v);
-		v = _mul(setRef(setRef(v, _n[2]), _m[0]));
-		v = _mul(setRef(setRef(v, _n[0]), _m[2]));
+		v = _mul(setRef(setRef(v, p[2]), q[0]));
+		v = _mul(setRef(setRef(v, p[0]), q[2]));
 		v = _sub(v);
-		v = _mul(setRef(setRef(v, _n[0]), _m[1]));
-		v = _mul(setRef(setRef(v, _n[1]), _m[0]));
+		v = _mul(setRef(setRef(v, p[0]), q[1]));
+		v = _mul(setRef(setRef(v, p[1]), q[0]));
 		v = _sub(v);
 
 		v = tovector(v,3);
@@ -1249,7 +1257,7 @@ value _atanh (value v) { return TYPE1_OPR (v, _atanh, atanh, _catanh); }
 
 /* --------- Mainly For Complex Numbers ---------------- */
 
-#define COMPL_OPR(v, CALL, SR_CALL, SF_CALL, SC_CALL) \
+#define COMPL_OPR(v, CALL, SF_CALL, SC_CALL) \
 { \
 	init_n(CALL) \
 	switch(a) \
@@ -1283,12 +1291,12 @@ value _atanh (value v) { return TYPE1_OPR (v, _atanh, atanh, _catanh); }
 #define sf_conj(n) n
 #define sf_proj(n) n
 
-value _cabs (value v) COMPL_OPR (v, _cabs, sr_abs , sf_abs , ccabs)
-value _carg (value v) COMPL_OPR (v, _carg, sr_arg , sf_arg , carg)
-value _real (value v) COMPL_OPR (v, _real, sr_real, sf_real, creal)
-value _imag (value v) COMPL_OPR (v, _imag, sr_imag, sf_imag, cimag)
-value _conj (value v) TYPE1_COM (v, _conj, sf_conj, conj)
-value _proj (value v) TYPE1_COM (v, _proj, sf_proj, _cproj)
+value _CAbs (value v) COMPL_OPR (v, _CAbs, sf_abs , ccabs)
+value _CArg (value v) COMPL_OPR (v, _CArg, sf_arg , carg)
+value _Real (value v) COMPL_OPR (v, _Real, sf_real, creal)
+value _Imag (value v) COMPL_OPR (v, _Imag, sf_imag, cimag)
+value _Conj (value v) TYPE1_COM (v, _Conj, sf_conj, conj)
+value _Proj (value v) TYPE1_COM (v, _Proj, sf_proj, _cproj)
 
 
 
@@ -1631,7 +1639,7 @@ value _pow (value v)
 				v = setSmaCom(y, _cpow(nf, mf));
 			break;
 
-		#ifdef COMPLEX
+		#if COMPLEX
 		case MIX(aSmaInt, aSmaCom): v = setSmaCom(y, _cpow(ni, mc)); break;
 		case MIX(aSmaFlt, aSmaCom): v = setSmaCom(y, _cpow(nf, mc)); break;
 		case MIX(aSmaCom, aSmaInt): v = setSmaCom(y, _cpow(nc, mi)); break;
@@ -1797,7 +1805,7 @@ value StrToVal (value out, const_Str2 str)  // single output value
 					}
 					if(i<0){
 						i = -i;
-						wchar w[i+1];
+						wchar w[16]; // w[i+1]
 						strcpy22S(w, str, i);
 						argv[1] = w;
 						argv[0] = L"String has invalid character code '%s'.";
@@ -1918,7 +1926,7 @@ static wchar* FltToStrGet (wchar* out, SmaFlt n, int base, uint32_t info)
 		precision=6;
 	info = TOSTR_SET_PREC(info,0); // clear precision
 
-	SmaInt w, d, scaler = base;
+	SmaInt w=0, d=0, scaler = base;
 
 	if(!e)
 	{

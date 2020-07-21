@@ -86,12 +86,12 @@ value _atanh(value v);
 
 /* --------- Complex Numbers Functions ---------------- */
 
-value _cabs (value v);
-value _carg (value v);
-value _real (value v);
-value _imag (value v);
-value _conj (value v);
-value _proj (value v);
+value _CAbs (value v);
+value _CArg (value v);
+value _Real (value v);
+value _Imag (value v);
+value _Conj (value v);
+value _Proj (value v);
 
 
 /* --------- Bitwise Operations ------------------------ */
