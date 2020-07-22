@@ -131,23 +131,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\_malloc.c" />
-    <ClCompile Include="..\_math.c" />
-    <ClCompile Include="..\_stdio.c" />
-    <ClCompile Include="..\_strfun.c" />
-    <ClCompile Include="..\_string.c" />
-    <ClCompile Include="..\_texts.c" />
-    <ClCompile Include="..\_value.c" />
+    <ClCompile Include="_malloc.c" />
+    <ClCompile Include="_math.c" />
+    <ClCompile Include="_stdio.c" />
+    <ClCompile Include="_strfun.c" />
+    <ClCompile Include="_string.c" />
+    <ClCompile Include="_texts.c" />
+    <ClCompile Include="_value.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\_malloc.h" />
-    <ClInclude Include="..\_math.h" />
-    <ClInclude Include="..\_stddef.h" />
-    <ClInclude Include="..\_stdio.h" />
-    <ClInclude Include="..\_strfun.h" />
-    <ClInclude Include="..\_string.h" />
-    <ClInclude Include="..\_texts.h" />
-    <ClInclude Include="..\_value.h" />
+    <ClInclude Include="_malloc.h" />
+    <ClInclude Include="_math.h" />
+    <ClInclude Include="_stddef.h" />
+    <ClInclude Include="_stdio.h" />
+    <ClInclude Include="_strfun.h" />
+    <ClInclude Include="_string.h" />
+    <ClInclude Include="_texts.h" />
+    <ClInclude Include="_value.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
